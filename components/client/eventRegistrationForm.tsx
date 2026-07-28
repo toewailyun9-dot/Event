@@ -6,6 +6,10 @@ import * as z from "zod";
 
 import { toast } from "sonner";
 import { createRegistration } from "@/app/actions/registration";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useEffect } from "react";
+import { syncOfflineRegistrations } from "@/lib/sync";
+import { db } from "@/lib/db";
 
 // Event Object Type Definition
 export interface EventData {
@@ -51,23 +55,50 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+const isOnline = useOnlineStatus();
 
-  const onSubmit = async (data: FormValues) => {
-    if (!event?.id) {
-      toast.error("Registration လက်ခံထားသော Event မရှိသေးပါ။");
-      return;
+  
+  useEffect(() => {
+    if (isOnline) {
+      syncOfflineRegistrations();
     }
 
-    const result = await createRegistration({
-      eventId: event.id,
-      ...data,
-    });
+  }, [isOnline]);
+const onSubmit = async (data: FormValues) => {
+    if (!event?.id) return;
 
-    if (result.success) {
-      toast.success("Registration အောင်မြင်ပါသည်။");
-      reset();
+    // 🌐 ONLINE ဖြစ်နေလျှင် - Server Action သို့ တိုက်ရိုက်ပို့မည်
+    if (isOnline) {
+      const result = await createRegistration({ eventId: event.id, ...data });
+      if (result.success) {
+        toast.success("Registration အောင်မြင်ပါသည်။");
+        reset();
+      } else {
+        toast.error(result.error || "မှားယွင်းနေပါသည်။");
+      }
+    } 
+    // 📴 OFFLINE ဖြစ်နေလျှင် - IndexedDB (Dexie) ထဲတွင် ခေတ္တသိမ်းထားမည်
+    else {
+      await db.pendingRegistrations.add({
+        ...data,
+        eventId: event.id,
+        createdAt: new Date().toISOString(),
+        synced: false,
+      });
+     if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        // 'sync-registrations' ဆိုပြီး Tag ပေး၍ ခိုင်းနှိုင်းခြင်း
+        await registration.sync.register('sync-registrations');
+        toast.warning("Offline သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Web App ဖွင့်ရန်မလိုဘဲ Auto Sync လုပ်ပေးပါမည်။");
+      } catch (err) {
+        // Background Sync Support မလုပ်သော browser များအတွက် fallback
+        toast.info("Data သိမ်းဆည်းပြီးပါပြီ။ App ပြန်ဖွင့်ချိန်တွင် Sync လုပ်ပေးပါမည်။");
+      }
     } else {
-      toast.error(result.error || "တစ်စုံတစ်ခု မှားယွင်းနေပါသည်။");
+      toast.info("Data သိမ်းဆည်းပြီးပါပြီ။ App ပြန်ဖွင့်ချိန်တွင် Sync လုပ်ပေးပါမည်။");
+    }
+      reset();
     }
   };
 
@@ -76,7 +107,13 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 p-4">
       <div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 space-y-6">
-        
+        <div className="flex items-center justify-between mb-4">
+      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+        isOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+      }`}>
+        {isOnline ? '🌐 Online' : '📴 Offline Mode (Saved locally)'}
+      </span>
+    </div>
         {/* Active Event Information Banner */}
         {event ? (
           <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/80 space-y-2.5">

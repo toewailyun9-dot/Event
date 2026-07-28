@@ -4,6 +4,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils";
 import { Toaster } from 'sonner';
+import { Metadata, Viewport } from "next";
 const geistMonoHeading = Geist_Mono({subsets:['latin'],variable:'--font-heading'});
 
 const figtree = Figtree({subsets:['latin'],variable:'--font-sans'})
@@ -12,6 +13,23 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+export const metadata: Metadata = {
+  title: "Event Registration",
+  description: "Register for events even when offline",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "EventApp",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#18181b",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export default function RootLayout({
   children,

@@ -1,0 +1,23 @@
+{
+  "name": "Event Registration App",
+  "short_name": "EventApp",
+  "description": "Offline-enabled Event Registration Application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#18181b",
+  "theme_color": "#18181b",
+  "icons": [
+    {
+      "src": "/simple.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/simple.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

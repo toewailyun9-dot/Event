@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 export const revalidate = 0; // Data အမြဲတမ်း Live Fresh ဖြစ်နေစေရန်
 
 export default async function Page() {
+  
   // နောက်ဆုံး Active ဖြစ်သော Event ကို ရှာဖွေခြင်း
   const activeEvent = await prisma.event.findFirst({
     where: {
