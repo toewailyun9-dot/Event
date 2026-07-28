@@ -1,13 +1,27 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
+import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { deleteRegistration, getRegistrations } from '../actions/admin'
+import Link from 'next/link'
+import { 
+  Users, 
+  Calendar, 
+  Search, 
+  RefreshCw, 
+  Trash2, 
+
+  Download, 
+  UserCheck, 
+
+  Filter
+} from 'lucide-react'
+
+import CreateEventButton from '@/components/admin/createEventButton'
 
 type Registration = {
   id: string
-  name: string
+  fullName: string
   email: string
   age: number
   phone: string
@@ -18,29 +32,36 @@ type Registration = {
 export default function AdminDashboard() {
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
-  // Data များ လှမ်းယူခြင်း
-  const fetchData = async () => {
+  // Data များ လှမ်းယူခြင်း (useCallback ဖြင့် Optmized ပြုလုပ်ထားပါသည်)
+  const fetchData = useCallback(async () => {
     setLoading(true)
-    const result = await getRegistrations()
-    if (result.success && result.data) {
-      setRegistrations(result.data)
-    } else {
-      toast.error(result.error || 'Data ရယူ၍ မရပါ။')
+    try {
+      const result = await getRegistrations()
+      if (result.success && result.data) {
+        setRegistrations(result.data)
+      } else {
+        toast.error(result.error || 'Data ရယူ၍ မရပါ။')
+      }
+    } catch {
+      toast.error('Network Error ဖြစ်ပေါ်နေပါသည်။')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData()
-  }, [])
+  }, [fetchData])
 
   // Single Item Delete ပြုလုပ်ခြင်း
   const handleDelete = async (id: string) => {
     if (!confirm('ဒီ Registration ကို ဖျက်ရန် သေချာပါသလား?')) return
 
+    setDeletingId(id)
     const result = await deleteRegistration(id)
     if (result.success) {
       toast.success('ဖျက်ထုတ်ပြီးပါပြီ။')
@@ -48,146 +69,210 @@ export default function AdminDashboard() {
     } else {
       toast.error(result.error || 'ဖျက်၍ မရပါ။')
     }
+    setDeletingId(null)
   }
 
   // Search Filter ပြုလုပ်ခြင်း
   const filteredData = registrations.filter(
     (item) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.fullName.toLowerCase().includes(search.toLowerCase()) ||
       item.email.toLowerCase().includes(search.toLowerCase()) ||
       item.phone.includes(search)
   )
 
+  // CSV Export ပြုလုပ်ရန် Utility Function
+  const exportToCSV = () => {
+    if (filteredData.length === 0) {
+      toast.error('Export လုပ်ရန် Data မရှိပါ။')
+      return
+    }
+
+    const headers = ['Name,Email,Age,Phone,Address,Registered Date\n']
+    const csvRows = filteredData.map((item) =>
+      `"${item.fullName}","${item.email}",${item.age},"${item.phone}","${item.address}","${new Date(item.createdAt).toLocaleDateString()}"`
+    )
+
+    const blob = new Blob([headers + csvRows.join('\n')], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `registrations-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    toast.success('CSV File Download စတင်ပါပြီ။')
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-800 pb-5">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-              Event Registrations Dashboard
+            <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+              <UserCheck className="w-6 h-6 text-indigo-400" />
+              <span>Event Registrations Dashboard</span>
             </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              စာရင်းသွင်းထားသူများ၏ စာရင်းကို ကြည့်ရှု စီမံနိုင်ပါသည်။
+            <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+              စာရင်းသွင်းထားသူများ၏ စာရင်းကို စစ်ဆေးခြင်းနှင့် စီမံခန့်ခွဲခြင်းများ ပြုလုပ်နိုင်ပါသည်။
             </p>
           </div>
-          <button
-            onClick={fetchData}
-            className="px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-sm font-medium hover:opacity-90 transition"
-          >
-            Refresh Data
-          </button>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/events"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Events</span>
+            </Link>
+
+         <CreateEventButton/>
+        
+            <button
+              onClick={exportToCSV}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export CSV</span>
+            </button>
+
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Total Registrations
-            </p>
-            <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+          <div className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center justify-between text-zinc-400 mb-2">
+              <span className="text-xs font-medium">Total Registrations</span>
+              <Users className="w-4 h-4 text-indigo-400" />
+            </div>
+            <p className="text-3xl font-extrabold text-white">
               {registrations.length}
             </p>
+            <p className="text-xs text-zinc-500 mt-1">စုစုပေါင်း စာရင်းပေးသူ ဦးရေ</p>
           </div>
-          <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Average Age
-            </p>
-            <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+
+          <div className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center justify-between text-zinc-400 mb-2">
+              <span className="text-xs font-medium">Average Age</span>
+              <Calendar className="w-4 h-4 text-emerald-400" />
+            </div>
+            <p className="text-3xl font-extrabold text-white">
               {registrations.length > 0
                 ? Math.round(
                     registrations.reduce((acc, curr) => acc + curr.age, 0) /
                       registrations.length
                   )
                 : 0}{' '}
-              <span className="text-sm font-normal">years</span>
+              <span className="text-sm font-normal text-zinc-400">နှစ်</span>
             </p>
+            <p className="text-xs text-zinc-500 mt-1">ပျှမ်းမျှ အသက်အရွယ်</p>
           </div>
-          <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Filter Results
-            </p>
-            <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+
+          <div className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center justify-between text-zinc-400 mb-2">
+              <span className="text-xs font-medium">Filtered Results</span>
+              <Filter className="w-4 h-4 text-amber-400" />
+            </div>
+            <p className="text-3xl font-extrabold text-white">
               {filteredData.length}
             </p>
+            <p className="text-xs text-zinc-500 mt-1">ရှာဖွေတွေ့ရှိသည့် အရေအတွက်</p>
           </div>
         </div>
 
-        {/* Control & Search Bar */}
-        <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-          <input
-            type="text"
-            placeholder="Search by Name, Email, Phone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-80 px-3 py-2 border rounded-lg text-sm bg-transparent outline-none border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
-          />
+        {/* Search Control Bar */}
+        <div className="flex justify-between items-center bg-zinc-900/80 p-4 border border-zinc-800 rounded-2xl shadow-sm">
+          <div className="relative w-full sm:w-96">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="အမည်၊ Email သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာမည်..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder:text-zinc-500 outline-none focus:border-indigo-500 transition"
+            />
+          </div>
         </div>
 
         {/* Table View */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100/50 dark:bg-zinc-800/50 text-xs text-zinc-500 dark:text-zinc-400 uppercase">
-                  <th className="py-3.5 px-4 font-semibold">Name</th>
-                  <th className="py-3.5 px-4 font-semibold">Email</th>
-                  <th className="py-3.5 px-4 font-semibold">Age</th>
-                  <th className="py-3.5 px-4 font-semibold">Phone</th>
-                  <th className="py-3.5 px-4 font-semibold">Address</th>
-                  <th className="py-3.5 px-4 font-semibold">Date</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Action</th>
+                <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 uppercase tracking-wider font-semibold">
+                  <th className="py-3.5 px-5">Name</th>
+                  <th className="py-3.5 px-5">Email</th>
+                  <th className="py-3.5 px-5">Age</th>
+                  <th className="py-3.5 px-5">Phone</th>
+                  <th className="py-3.5 px-5">Address</th>
+                  <th className="py-3.5 px-5">Date</th>
+                  <th className="py-3.5 px-5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-sm">
+              <tbody className="divide-y divide-zinc-800/60 text-zinc-300">
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="py-8 text-center text-zinc-500 dark:text-zinc-400"
-                    >
-                      Loading registrations...
+                    <td colSpan={7} className="py-12 text-center text-zinc-500">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
+                        <span>Data များကို ရယူနေပါသည်...</span>
+                      </div>
                     </td>
                   </tr>
                 ) : filteredData.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="py-8 text-center text-zinc-500 dark:text-zinc-400"
-                    >
-                      စာရင်း မရှိသေးပါ။
+                    <td colSpan={7} className="py-12 text-center text-zinc-500">
+                      မည်သည့် စာရင်းမှ မရှိသေးပါ။
                     </td>
                   </tr>
                 ) : (
                   filteredData.map((item) => (
                     <tr
                       key={item.id}
-                      className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                      className="hover:bg-zinc-800/30 transition-colors"
                     >
-                      <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-100">
-                        {item.name}
+                      <td className="py-4 px-5 font-medium text-white">
+                        {item.fullName}
                       </td>
-                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
-                        {item.email}
+                      <td className="py-4 px-5 text-zinc-400">{item.email}</td>
+                      <td className="py-4 px-5">
+                        <span className="px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300">
+                          {item.age}
+                        </span>
                       </td>
-                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
-                        {item.age}
-                      </td>
-                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
-                        {item.phone}
-                      </td>
-                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400 max-w-xs truncate">
+                      <td className="py-4 px-5">{item.phone}</td>
+                      <td className="py-4 px-5 text-zinc-400 max-w-xs truncate">
                         {item.address}
                       </td>
-                      <td className="py-3 px-4 text-zinc-500 dark:text-zinc-400 text-xs">
-                        {new Date(item.createdAt).toLocaleDateString()}
+                      <td className="py-4 px-5 text-zinc-500">
+                        {new Date(item.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric"
+                        })}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-4 px-5 text-right">
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-medium px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950/50 transition"
+                          disabled={deletingId === item.id}
+                          className="inline-flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 font-medium px-2.5 py-1.5 rounded-lg hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition disabled:opacity-50"
                         >
-                          Delete
+                          {deletingId === item.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                          <span>Delete</span>
                         </button>
                       </td>
                     </tr>
@@ -197,6 +282,7 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
+
       </div>
     </div>
   )

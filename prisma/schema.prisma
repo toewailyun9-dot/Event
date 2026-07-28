@@ -13,15 +13,53 @@ datasource db {
 }
 
 
+
+
+
+
+
+// ၁။ Dynamic Event Structure
+model Event {
+  id            String         @id @default(cuid())
+  title         String         // ဥပမာ - "Tech Summit 2026"
+  slug          String         @unique // URL Dynamic Routing အတွက် (ဥပမာ - tech-summit-2026)
+  description   String?
+  eventDate     DateTime
+  location      String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // 1-to-Many Relationship
+  registrations Registration[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+// ၂။ Dynamic Registrations Structure
 model Registration {
   id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  age       Int
+  
+  // Foreign Key - ဘယ် Event အောက်က Data လဲဆိုတာ ခွဲခြားရန်
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // User/Attendee Data Fields
+  fullName  String
+  email     String
   phone     String
-  address   String
+   age      Int
+   address  String
+  // Offline-First Tracking
+  // Dexie.js (Offline DB) မှ Sync လုပ်လာသော Data ဟုတ်မဟုတ် မှတ်သားရန်
+  isOfflineSynced Boolean  @default(false) 
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("registrations")
+  // Performance Optimization မရှိမဖြစ် Indexes များ
+  @@index([eventId])
+  @@index([email])
+  @@index([createdAt])
 }
