@@ -9,7 +9,17 @@ export async function POST(request: Request) {
     const validated = createRegistrationSchema.parse(body);
     
     const result = await createRegistration(validated);
-    return NextResponse.json({ success: true, data: result });
+
+    // Return proper HTTP status codes so the Service Worker can act accordingly
+    if (result.success) {
+      return NextResponse.json({ success: true, data: result.data }, { status: 200 });
+    }
+
+    // Validation or business logic errors (e.g. duplicate email)
+    return NextResponse.json(
+      { success: false, error: result.error },
+      { status: 409 }
+    );
   } catch (error) {
     return NextResponse.json(
       { success: false, error: "Registration failed" },

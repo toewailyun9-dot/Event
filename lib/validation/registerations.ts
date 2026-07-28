@@ -8,4 +8,8 @@ export const createRegistrationSchema = z.object({
   age: z.number().min(10, { message: 'အသက်သည် အနည်းဆုံး 10 နှစ် ဖြစ်ရပါမည်။' }).max(120),
   phone: z.string().min(8, { message: 'မှန်ကန်သော ဖုန်းနံပါတ် ထည့်သွင်းပါ။' }),
   address: z.string().min(5, { message: 'လိပ်စာသည် အနည်းဆုံး ၅ လုံး ရှိရပါမည်။' }),
+  // Idempotency key for offline→online sync deduplication
+  syncId: z.string().optional(),
+  // Whether this registration came from offline sync
+  isOfflineSynced: z.boolean().optional(),
 })

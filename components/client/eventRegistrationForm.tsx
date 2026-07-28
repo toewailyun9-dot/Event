@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -7,7 +8,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { createRegistration } from "@/app/actions/registration";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { syncOfflineRegistrations } from "@/lib/sync";
 import { db } from "@/lib/db";
 
@@ -47,85 +48,121 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function EventRegistrationForm({ event }: EventRegistrationProps) {
+  const [loading, setLoading] = useState(false);
+
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
-const isOnline = useOnlineStatus();
 
-  
+  const isOnline = useOnlineStatus();
+
   useEffect(() => {
     if (isOnline) {
       syncOfflineRegistrations();
     }
-
   }, [isOnline]);
-const onSubmit = async (data: FormValues) => {
-  if (!event?.id) return;
 
-  // 1. Online ဟု ယူဆထားပါက Server Action ပို့ကြည့်မည်
-  if (isOnline) {
+  // IndexedDB သို့ သိမ်းဆည်းသည့် Logic
+  const handleOfflineSave = async (data: FormValues, eventId: string) => {
     try {
-      const result = await createRegistration({ eventId: event.id, ...data });
+      const syncId = crypto.randomUUID();
+
+      // IndexedDB ထဲသို့ ထည့်ခြင်း
+      await db.pendingRegistrations.add({
+        ...data,
+        syncId,
+        eventId,
+        createdAt: new Date().toISOString(),
+        synced: false,
+      });
+
+      // Toast ကို SW registration မလုပ်ခင် ချက်ချင်းပြပါ
+      toast.warning("Offline Mode: Data ကို စက်ထဲတွင် သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Auto Sync လုပ်ပေးပါမည်။");
+
+      // Background Sync Tag — 2s timeout (offline မှာ hang မဖြစ်စေရန်)
+      if ("serviceWorker" in navigator && "SyncManager" in window) {
+        try {
+          const swTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("SW ready timeout")), 2000)
+          );
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const registration = (await Promise.race([
+            navigator.serviceWorker.ready,
+            swTimeout,
+          ])) as any;
+          await registration.sync.register("sync-registrations");
+        } catch (err) {
+          console.warn("SW Sync registration skipped (offline or timeout):", err);
+        }
+      }
+
+      // Form ကို Reset လုပ်ခြင်း
+      reset();
+    } catch (dbError) {
+      console.error("Dexie Save Error:", dbError);
+      toast.error("Local Storage သို့ သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်နေပါသည်။");
+    }
+  };
+
+  const onSubmit = async (data: FormValues) => {
+    if (!event?.id) return;
+
+    setLoading(true);
+
+    try {
+      const isReallyOnline = typeof window !== "undefined" && navigator.onLine && isOnline;
+
+      // Offline Mode → IndexedDB ထဲ တန်းသိမ်းမည်
+      if (!isReallyOnline) {
+        await handleOfflineSave(data, event.id);
+        return;
+      }
+
+      // Online Mode → 3s timeout ဖြင့် Server Action ခေါ်မည်
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Network timeout")), 3000)
+      );
+
+      const result = (await Promise.race([
+        createRegistration({ eventId: event.id, ...data }),
+        timeoutPromise,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ])) as any;
 
       if (result.success) {
         toast.success("Registration အောင်မြင်ပါသည်။");
         reset();
-        return; // Success ဖြစ်ရင် ဒီမှာတင် ရပ်မည်
       } else {
         toast.error(result.error || "မှားယွင်းနေပါသည်။");
-        return;
       }
     } catch (error) {
-      // 💡 Server Action ကို Network Error ကြောင့် လှမ်းခေါ်မရပါက catch ထဲရောက်လာမည်
-      // အောက်ပါ Offline Dexie Save logic သို့ ဆက်သွားပါမည်
-      console.warn("Network Action failed, falling back to local Dexie storage.", error);
+      console.warn("Network error/timeout, falling back to IndexedDB:", error);
+      await handleOfflineSave(data, event.id);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  // 2. Offline ဖြစ်နေလျှင် သို့မဟုတ် Server Action ခေါ်မရလျှင် IndexedDB (Dexie) ထဲသို့ သိမ်းမည်
-  try {
-    await db.pendingRegistrations.add({
-      ...data,
-      eventId: event.id,
-      createdAt: new Date().toISOString(),
-      synced: false,
-    });
-
-    if ('serviceWorker' in navigator && 'SyncManager' in window) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        await registration.sync.register('sync-registrations');
-        toast.warning("Offline သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Auto Sync လုပ်ပေးပါမည်။");
-      } catch (err) {
-        toast.info("Data သိမ်းဆည်းပြီးပါပြီ။ App ပြန်ဖွင့်ချိန်တွင် Sync လုပ်ပေးပါမည်။");
-      }
-    } else {
-      toast.info("Data သိမ်းဆည်းပြီးပါပြီ။ App ပြန်ဖွင့်ချိန်တွင် Sync လုပ်ပေးပါမည်။");
-    }
-
-    reset();
-  } catch (dbError) {
-    toast.error("Local Storage သို့ သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်နေပါသည်။");
-  }
-};
-
-  const isFormDisabled = !event || isSubmitting;
+  const isFormDisabled = !event || loading;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 p-4">
+   <div className="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 p-4">
       <div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 space-y-6">
         <div className="flex items-center justify-between mb-4">
-      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-        isOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-      }`}>
-        {isOnline ? '🌐 Online' : '📴 Offline Mode (Saved locally)'}
-      </span>
-    </div>
+          <span
+            className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+              isOnline ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {isOnline ? "🌐 Online" : "📴 Offline Mode (Saved locally)"}
+          </span>
+        </div>
+
         {/* Active Event Information Banner */}
         {event ? (
           <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/80 space-y-2.5">
@@ -173,7 +210,6 @@ const onSubmit = async (data: FormValues) => {
           </div>
         )}
 
-        {/* Form Title */}
         <div>
           <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
             Registration Form
@@ -185,7 +221,6 @@ const onSubmit = async (data: FormValues) => {
 
         {/* Form Controls */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Name Field */}
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Name
@@ -202,7 +237,6 @@ const onSubmit = async (data: FormValues) => {
             )}
           </div>
 
-          {/* Email Field */}
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Email
@@ -219,9 +253,7 @@ const onSubmit = async (data: FormValues) => {
             )}
           </div>
 
-          {/* Grid for Age and Phone */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Age Field */}
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Age
@@ -238,7 +270,6 @@ const onSubmit = async (data: FormValues) => {
               )}
             </div>
 
-            {/* Phone Field */}
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Phone
@@ -258,7 +289,6 @@ const onSubmit = async (data: FormValues) => {
             </div>
           </div>
 
-          {/* Address Field */}
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Address
@@ -277,17 +307,32 @@ const onSubmit = async (data: FormValues) => {
             )}
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={isFormDisabled}
             className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-medium rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
-            {isSubmitting ? (
+            {loading ? (
               <>
-                <svg className="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin h-4 w-4 text-current"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 <span>Submitting...</span>
               </>
@@ -298,5 +343,7 @@ const onSubmit = async (data: FormValues) => {
         </form>
       </div>
     </div>
+   
   );
+
 }

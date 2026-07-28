@@ -51,9 +51,15 @@ model Registration {
   phone     String
    age      Int
    address  String
+
   // Offline-First Tracking
   // Dexie.js (Offline DB) မှ Sync လုပ်လာသော Data ဟုတ်မဟုတ် မှတ်သားရန်
-  isOfflineSynced Boolean  @default(false) 
+  isOfflineSynced Boolean  @default(false)
+
+  // Idempotency Key - UUID generated on client before Dexie save.
+  // This prevents duplicate registrations when both SW Background Sync
+  // and client-side sync attempt to send the same data simultaneously.
+  syncId String? @unique
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -62,4 +68,7 @@ model Registration {
   @@index([eventId])
   @@index([email])
   @@index([createdAt])
+  @@index([syncId])
+  // DB-level unique constraint: prevents same email for same event
+  @@unique([eventId, email])
 }

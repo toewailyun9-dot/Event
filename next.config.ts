@@ -2,12 +2,13 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development" ? false : false,
+  disable: false, // Dev ရော Prod မှာပါ PWA / SW အလုပ်လုပ်စေရန်
+  cacheOnFrontEndNav: true, // Offline ခချိန် Navigations စာမျက်နှာများ Cache မိစေရန်
+  aggressiveFrontEndNavCaching: true,
   workboxOptions: {
     skipWaiting: true,
     clientsClaim: true,
-    // 💡 Custom ရေးထားသော background sync code အား လှမ်းပေါင်းထည့်ခိုင်းခြင်း
-    importScripts: ['/sw-custom.js'], 
+    importScripts: ['/sw-custom.js'], // Custom Background Sync listener
   },
 });
 

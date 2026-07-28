@@ -11,6 +11,7 @@ export interface OfflineRegistration {
   eventId: string;
   createdAt: string;
   synced: boolean; // Sync ပြီး မပြီး စစ်ရန် flag
+  syncId: string; // UUID idempotency key — generated before save to prevent duplicates
 }
 
 export class OfflineDB extends Dexie {
