@@ -65,42 +65,54 @@ const isOnline = useOnlineStatus();
 
   }, [isOnline]);
 const onSubmit = async (data: FormValues) => {
-    if (!event?.id) return;
+  if (!event?.id) return;
 
-    // 🌐 ONLINE ဖြစ်နေလျှင် - Server Action သို့ တိုက်ရိုက်ပို့မည်
-    if (isOnline) {
+  // 1. Online ဟု ယူဆထားပါက Server Action ပို့ကြည့်မည်
+  if (isOnline) {
+    try {
       const result = await createRegistration({ eventId: event.id, ...data });
+
       if (result.success) {
         toast.success("Registration အောင်မြင်ပါသည်။");
         reset();
+        return; // Success ဖြစ်ရင် ဒီမှာတင် ရပ်မည်
       } else {
         toast.error(result.error || "မှားယွင်းနေပါသည်။");
+        return;
       }
-    } 
-    // 📴 OFFLINE ဖြစ်နေလျှင် - IndexedDB (Dexie) ထဲတွင် ခေတ္တသိမ်းထားမည်
-    else {
-      await db.pendingRegistrations.add({
-        ...data,
-        eventId: event.id,
-        createdAt: new Date().toISOString(),
-        synced: false,
-      });
-     if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    } catch (error) {
+      // 💡 Server Action ကို Network Error ကြောင့် လှမ်းခေါ်မရပါက catch ထဲရောက်လာမည်
+      // အောက်ပါ Offline Dexie Save logic သို့ ဆက်သွားပါမည်
+      console.warn("Network Action failed, falling back to local Dexie storage.", error);
+    }
+  }
+
+  // 2. Offline ဖြစ်နေလျှင် သို့မဟုတ် Server Action ခေါ်မရလျှင် IndexedDB (Dexie) ထဲသို့ သိမ်းမည်
+  try {
+    await db.pendingRegistrations.add({
+      ...data,
+      eventId: event.id,
+      createdAt: new Date().toISOString(),
+      synced: false,
+    });
+
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
       try {
         const registration = await navigator.serviceWorker.ready;
-        // 'sync-registrations' ဆိုပြီး Tag ပေး၍ ခိုင်းနှိုင်းခြင်း
         await registration.sync.register('sync-registrations');
-        toast.warning("Offline သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Web App ဖွင့်ရန်မလိုဘဲ Auto Sync လုပ်ပေးပါမည်။");
+        toast.warning("Offline သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Auto Sync လုပ်ပေးပါမည်။");
       } catch (err) {
-        // Background Sync Support မလုပ်သော browser များအတွက် fallback
         toast.info("Data သိမ်းဆည်းပြီးပါပြီ။ App ပြန်ဖွင့်ချိန်တွင် Sync လုပ်ပေးပါမည်။");
       }
     } else {
       toast.info("Data သိမ်းဆည်းပြီးပါပြီ။ App ပြန်ဖွင့်ချိန်တွင် Sync လုပ်ပေးပါမည်။");
     }
-      reset();
-    }
-  };
+
+    reset();
+  } catch (dbError) {
+    toast.error("Local Storage သို့ သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်နေပါသည်။");
+  }
+};
 
   const isFormDisabled = !event || isSubmitting;
 
