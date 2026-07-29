@@ -38,7 +38,7 @@ export async function createRegistration(data: CreateRegistrationInput) {
     // 2. eventId ပါမလာခဲ့ပါက Database ထဲရှိ နောက်ဆုံး Event ကို Auto ရှာပေးခြင်း
     if (!targetEventId) {
       const latestEvent = await prisma.event.findFirst({
-       
+        where: { isActive: true },
         select: {
           id: true,
           isActive: true,

@@ -19,6 +19,10 @@ interface ActiveEvent {
   location?: string | null;
 }
 
+interface EventRegistrationFormProps {
+  event?: ActiveEvent | null;
+}
+
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "အမည်သည် အနည်းဆုံး ၂ လုံး ရှိရပါမည်။",
@@ -40,10 +44,10 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function EventRegistrationForm() {
+export default function EventRegistrationForm({ event: initialEvent }: EventRegistrationFormProps) {
   const [loading, setLoading] = useState(false);
-  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
-  const [eventLoading, setEventLoading] = useState(true);
+  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(initialEvent ?? null);
+  const [eventLoading, setEventLoading] = useState(!initialEvent);
 
   const {
     register,
@@ -63,6 +67,10 @@ export default function EventRegistrationForm() {
   }, [isOnline]);
 
   useEffect(() => {
+    if (initialEvent) {
+      setEventLoading(false);
+      return;
+    }
     if (!isOnline) {
       setEventLoading(false);
       return
@@ -74,7 +82,7 @@ export default function EventRegistrationForm() {
       })
       .catch(() => {})
       .finally(() => setEventLoading(false));
-  }, [isOnline]);
+  }, [isOnline, initialEvent]);
 
   const handleOfflineSave = async (data: FormValues, eventId: string | undefined) => {
     try {

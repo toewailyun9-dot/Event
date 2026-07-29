@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import CreateEventForm from './createEventForm'
+import dynamic from 'next/dynamic'
+
+const CreateEventForm = dynamic(() => import('./createEventForm'), {
+  ssr: false,
+  loading: () => null,
+})
 
 
 export default function CreateEventButton() {

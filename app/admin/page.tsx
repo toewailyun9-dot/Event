@@ -2,22 +2,28 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
-import { deleteRegistration, getRegistrations } from '../actions/admin'
+import { deleteRegistration, getRegistrations, getEventsForFilter } from '../actions/admin'
 import Link from 'next/link'
-import { 
-  Users, 
-  Calendar, 
-  Search, 
-  RefreshCw, 
-  Trash2, 
-
-  Download, 
-  UserCheck, 
-
-  Filter
+import {
+  Users,
+  Calendar,
+  Search,
+  RefreshCw,
+  Trash2,
+  Download,
+  UserCheck,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Cloud,
+  Wifi,
+  WifiOff,
+  CalendarRange,
 } from 'lucide-react'
 
 import CreateEventButton from '@/components/admin/createEventButton'
+import { useDebounce } from '@/hooks/useDebounce'
 
 type Registration = {
   id: string
@@ -27,21 +33,54 @@ type Registration = {
   phone: string
   address: string
   createdAt: Date
+  isOfflineSynced?: boolean
 }
+
+type EventOption = {
+  id: string
+  title: string
+  isActive: boolean
+}
+
+const PAGE_SIZE = 50
 
 export default function AdminDashboard() {
   const [registrations, setRegistrations] = useState<Registration[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
 
-  // Data များ လှမ်းယူခြင်း (useCallback ဖြင့် Optmized ပြုလုပ်ထားပါသည်)
-  const fetchData = useCallback(async () => {
+  const [events, setEvents] = useState<EventOption[]>([])
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterEventId, setFilterEventId] = useState('')
+  const [filterDateFrom, setFilterDateFrom] = useState('')
+  const [filterDateTo, setFilterDateTo] = useState('')
+  const [filterSyncStatus, setFilterSyncStatus] = useState<'all' | 'synced' | 'unsynced'>('all')
+
+  useEffect(() => {
+    getEventsForFilter().then((result) => {
+      if (result.success && result.data) setEvents(result.data)
+    })
+  }, [])
+
+  const fetchData = useCallback(async (searchVal: string, pageNum: number, filters?: { eventId?: string; dateFrom?: string; dateTo?: string; syncStatus?: string }) => {
     setLoading(true)
     try {
-      const result = await getRegistrations()
+      const result = await getRegistrations({
+        search: searchVal || undefined,
+        page: pageNum,
+        pageSize: PAGE_SIZE,
+        eventId: filters?.eventId || undefined,
+        dateFrom: filters?.dateFrom || undefined,
+        dateTo: filters?.dateTo || undefined,
+        syncStatus: filters?.syncStatus as 'all' | 'synced' | 'unsynced' | undefined,
+      })
       if (result.success && result.data) {
         setRegistrations(result.data)
+        setTotal(result.total ?? 0)
       } else {
         toast.error(result.error || 'Data ရယူ၍ မရပါ။')
       }
@@ -53,11 +92,30 @@ export default function AdminDashboard() {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData()
-  }, [fetchData])
+    setPage(1)
+  }, [debouncedSearch])
 
-  // Single Item Delete ပြုလုပ်ခြင်း
+  useEffect(() => {
+    fetchData(debouncedSearch, page, {
+      eventId: filterEventId,
+      dateFrom: filterDateFrom,
+      dateTo: filterDateTo,
+      syncStatus: filterSyncStatus,
+    })
+  }, [fetchData, debouncedSearch, page, filterEventId, filterDateFrom, filterDateTo, filterSyncStatus])
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const hasActiveFilters = filterEventId || filterDateFrom || filterDateTo || filterSyncStatus !== 'all'
+
+  const clearFilters = () => {
+    setFilterEventId('')
+    setFilterDateFrom('')
+    setFilterDateTo('')
+    setFilterSyncStatus('all')
+    setPage(1)
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('ဒီ Registration ကို ဖျက်ရန် သေချာပါသလား?')) return
 
@@ -66,30 +124,22 @@ export default function AdminDashboard() {
     if (result.success) {
       toast.success('ဖျက်ထုတ်ပြီးပါပြီ။')
       setRegistrations((prev) => prev.filter((item) => item.id !== id))
+      setTotal((prev) => prev - 1)
     } else {
       toast.error(result.error || 'ဖျက်၍ မရပါ။')
     }
     setDeletingId(null)
   }
 
-  // Search Filter ပြုလုပ်ခြင်း
-  const filteredData = registrations.filter(
-    (item) =>
-      item.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      item.email.toLowerCase().includes(search.toLowerCase()) ||
-      item.phone.includes(search)
-  )
-
-  // CSV Export ပြုလုပ်ရန် Utility Function
   const exportToCSV = () => {
-    if (filteredData.length === 0) {
+    if (registrations.length === 0) {
       toast.error('Export လုပ်ရန် Data မရှိပါ။')
       return
     }
 
-    const headers = ['Name,Email,Age,Phone,Address,Registered Date\n']
-    const csvRows = filteredData.map((item) =>
-      `"${item.fullName}","${item.email}",${item.age},"${item.phone}","${item.address}","${new Date(item.createdAt).toLocaleDateString()}"`
+    const headers = ['Name,Email,Age,Phone,Address,Registered Date,Sync Status\n']
+    const csvRows = registrations.map((item) =>
+      `"${item.fullName}","${item.email}",${item.age},"${item.phone}","${item.address}","${new Date(item.createdAt).toLocaleDateString()}","${item.isOfflineSynced ? 'Synced' : 'Manual'}"`
     )
 
     const blob = new Blob([headers + csvRows.join('\n')], { type: 'text/csv' })
@@ -104,7 +154,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        
+
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-800 pb-5">
           <div>
@@ -117,7 +167,6 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/admin/events"
@@ -127,8 +176,8 @@ export default function AdminDashboard() {
               <span>Events</span>
             </Link>
 
-         <CreateEventButton/>
-        
+            <CreateEventButton />
+
             <button
               onClick={exportToCSV}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition"
@@ -138,7 +187,7 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={fetchData}
+              onClick={() => fetchData(debouncedSearch, page)}
               disabled={loading}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition disabled:opacity-50"
             >
@@ -155,9 +204,7 @@ export default function AdminDashboard() {
               <span className="text-xs font-medium">Total Registrations</span>
               <Users className="w-4 h-4 text-indigo-400" />
             </div>
-            <p className="text-3xl font-extrabold text-white">
-              {registrations.length}
-            </p>
+            <p className="text-3xl font-extrabold text-white">{total}</p>
             <p className="text-xs text-zinc-500 mt-1">စုစုပေါင်း စာရင်းပေးသူ ဦးရေ</p>
           </div>
 
@@ -183,15 +230,125 @@ export default function AdminDashboard() {
               <span className="text-xs font-medium">Filtered Results</span>
               <Filter className="w-4 h-4 text-amber-400" />
             </div>
-            <p className="text-3xl font-extrabold text-white">
-              {filteredData.length}
-            </p>
+            <p className="text-3xl font-extrabold text-white">{total}</p>
             <p className="text-xs text-zinc-500 mt-1">ရှာဖွေတွေ့ရှိသည့် အရေအတွက်</p>
           </div>
         </div>
 
-        {/* Search Control Bar */}
-        <div className="flex justify-between items-center bg-zinc-900/80 p-4 border border-zinc-800 rounded-2xl shadow-sm">
+        {/* Filter Toggle + Active Filter Badge */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition border ${
+              hasActiveFilters
+                ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            <span>Filters</span>
+            {hasActiveFilters && (
+              <span className="ml-1.5 text-xs bg-indigo-500/30 text-indigo-200 px-1.5 py-0.5 rounded-full">
+                {[filterEventId, filterDateFrom, filterDateTo, filterSyncStatus !== 'all' ? filterSyncStatus : ''].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-2">
+                {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Event Filter */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">Event</label>
+                <select
+                  value={filterEventId}
+                  onChange={(e) => { setFilterEventId(e.target.value); setPage(1) }}
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition"
+                >
+                  <option value="">All Events</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.title} {ev.isActive ? '' : '(Inactive)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date From */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">From Date</label>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => { setFilterDateFrom(e.target.value); setPage(1) }}
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition [color-scheme:dark]"
+                />
+              </div>
+
+              {/* Date To */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">To Date</label>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => { setFilterDateTo(e.target.value); setPage(1) }}
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition [color-scheme:dark]"
+                />
+              </div>
+
+              {/* Sync Status */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">Sync Status</label>
+                <select
+                  value={filterSyncStatus}
+                  onChange={(e) => { setFilterSyncStatus(e.target.value as 'all' | 'synced' | 'unsynced'); setPage(1) }}
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition"
+                >
+                  <option value="all">All</option>
+                  <option value="synced">Synced (Online)</option>
+                  <option value="unsynced">Unsynced (Offline)</option>
+                </select>
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition px-2 py-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Clear All Filters</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Search + Pagination Bar */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-zinc-900/80 p-4 border border-zinc-800 rounded-2xl">
           <div className="relative w-full sm:w-96">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
@@ -204,7 +361,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Table View */}
+        {/* Table */}
         <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -215,6 +372,7 @@ export default function AdminDashboard() {
                   <th className="py-3.5 px-5">Age</th>
                   <th className="py-3.5 px-5">Phone</th>
                   <th className="py-3.5 px-5">Address</th>
+                  <th className="py-3.5 px-5">Sync</th>
                   <th className="py-3.5 px-5">Date</th>
                   <th className="py-3.5 px-5 text-right">Action</th>
                 </tr>
@@ -222,21 +380,21 @@ export default function AdminDashboard() {
               <tbody className="divide-y divide-zinc-800/60 text-zinc-300">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-zinc-500">
+                    <td colSpan={8} className="py-12 text-center text-zinc-500">
                       <div className="flex items-center justify-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
                         <span>Data များကို ရယူနေပါသည်...</span>
                       </div>
                     </td>
                   </tr>
-                ) : filteredData.length === 0 ? (
+                ) : registrations.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-zinc-500">
+                    <td colSpan={8} className="py-12 text-center text-zinc-500">
                       မည်သည့် စာရင်းမှ မရှိသေးပါ။
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map((item) => (
+                  registrations.map((item) => (
                     <tr
                       key={item.id}
                       className="hover:bg-zinc-800/30 transition-colors"
@@ -254,11 +412,24 @@ export default function AdminDashboard() {
                       <td className="py-4 px-5 text-zinc-400 max-w-xs truncate">
                         {item.address}
                       </td>
+                      <td className="py-4 px-5">
+                        {item.isOfflineSynced ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-400 text-xs">
+                            <Wifi className="w-3.5 h-3.5" />
+                            <span>Synced</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-amber-400 text-xs">
+                            <WifiOff className="w-3.5 h-3.5" />
+                            <span>Manual</span>
+                          </span>
+                        )}
+                      </td>
                       <td className="py-4 px-5 text-zinc-500">
                         {new Date(item.createdAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
-                          year: "numeric"
+                          year: "numeric",
                         })}
                       </td>
                       <td className="py-4 px-5 text-right">
@@ -282,7 +453,6 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
-
       </div>
     </div>
   )
