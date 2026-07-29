@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { requireAuth } from '@/lib/auth'
+import { createEventSchema, toggleEventStatusSchema } from '@/lib/validation/admin'
 
 export async function createEvent(data: {
   title: string
@@ -10,12 +12,17 @@ export async function createEvent(data: {
   location?: string
 }) {
   try {
+    const auth = await requireAuth()
+    if (!auth.success) return { success: false, error: auth.error }
+
+    const validated = createEventSchema.parse(data)
+
     const newEvent = await prisma.event.create({
       data: {
-        title: data.title,
-        slug: data.slug, 
-        eventDate: data.eventDate,
-        location: data.location,
+        title: validated.title,
+        slug: validated.slug,
+        eventDate: validated.eventDate,
+        location: validated.location,
       },
     })
 
@@ -27,12 +34,16 @@ export async function createEvent(data: {
   }
 }
 
-
 export async function toggleEventStatus(id: string, currentStatus: boolean) {
   try {
+    const auth = await requireAuth()
+    if (!auth.success) return { success: false, error: auth.error }
+
+    const validated = toggleEventStatusSchema.parse({ id, currentStatus })
+
     await prisma.event.update({
-      where: { id },
-      data: { isActive: !currentStatus },
+      where: { id: validated.id },
+      data: { isActive: !validated.currentStatus },
     })
 
     revalidatePath('/admin/events')

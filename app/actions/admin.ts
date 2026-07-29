@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { requireAuth } from '@/lib/auth'
+import { getRegistrationsSchema, deleteRegistrationSchema } from '@/lib/validation/admin'
 
 // ၁။ Registrations အားလုံးကို ယူသည့် Action (with pagination + search + filters)
 export async function getRegistrations(params?: {
@@ -14,9 +16,13 @@ export async function getRegistrations(params?: {
   syncStatus?: 'all' | 'synced' | 'unsynced'
 }) {
   try {
-    const search = params?.search?.trim() ?? ''
-    const page = params?.page ?? 1
-    const pageSize = params?.pageSize ?? 50
+    const auth = await requireAuth()
+    if (!auth.success) return { success: false, error: auth.error }
+
+    const parsed = getRegistrationsSchema.parse(params ?? {})
+    const search = parsed.search?.trim() ?? ''
+    const page = parsed.page
+    const pageSize = parsed.pageSize
     const skip = (page - 1) * pageSize
 
     const where: Record<string, unknown> = {}
@@ -29,19 +35,19 @@ export async function getRegistrations(params?: {
       ]
     }
 
-    if (params?.eventId) {
-      where.eventId = params.eventId
+    if (parsed.eventId) {
+      where.eventId = parsed.eventId
     }
 
-    if (params?.dateFrom || params?.dateTo) {
+    if (parsed.dateFrom || parsed.dateTo) {
       const createdAt: Record<string, Date> = {}
-      if (params.dateFrom) createdAt.gte = new Date(params.dateFrom)
-      if (params.dateTo) createdAt.lte = new Date(params.dateTo + 'T23:59:59.999Z')
+      if (parsed.dateFrom) createdAt.gte = new Date(parsed.dateFrom)
+      if (parsed.dateTo) createdAt.lte = new Date(parsed.dateTo + 'T23:59:59.999Z')
       where.createdAt = createdAt
     }
 
-    if (params?.syncStatus && params.syncStatus !== 'all') {
-      where.isOfflineSynced = params.syncStatus === 'synced'
+    if (parsed.syncStatus && parsed.syncStatus !== 'all') {
+      where.isOfflineSynced = parsed.syncStatus === 'synced'
     }
 
     const [data, total] = await Promise.all([
@@ -64,6 +70,9 @@ export async function getRegistrations(params?: {
 // Events list for filter dropdown
 export async function getEventsForFilter() {
   try {
+    const auth = await requireAuth()
+    if (!auth.success) return { success: false, error: auth.error }
+
     const events = await prisma.event.findMany({
       orderBy: { createdAt: 'desc' },
       select: { id: true, title: true, isActive: true },
@@ -78,8 +87,13 @@ export async function getEventsForFilter() {
 // ၂။ Registration တစ်ခုကို ဖျက်သည့် Action
 export async function deleteRegistration(id: string) {
   try {
+    const auth = await requireAuth()
+    if (!auth.success) return { success: false, error: auth.error }
+
+    const { id: validatedId } = deleteRegistrationSchema.parse({ id })
+
     await prisma.registration.delete({
-      where: { id },
+      where: { id: validatedId },
     })
     revalidatePath('/admin') 
     return { success: true }
