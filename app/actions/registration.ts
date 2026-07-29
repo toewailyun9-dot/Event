@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { createRegistrationSchema } from '@/lib/validation/registerations'
 import { revalidatePath } from 'next/cache'
 import z from 'zod'
-import { Prisma } from '../../generated/prisma/client'
 
 
 
@@ -85,24 +84,21 @@ export async function createRegistration(data: CreateRegistrationInput) {
     revalidatePath(`/events/${targetEventId}`)
 
     return { success: true, data: newRegistration }
-  } catch (error) {
+  } catch (error: unknown) {
     // ─── PRISMA UNIQUE CONSTRAINT VIOLATION ────────────────────────
     // Fallback: if both SW and client hit simultaneously and bypassed
     // the syncId check, the DB-level unique constraint will catch it.
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        const target = (error.meta?.target as string[]) ?? []
-        if (target.includes('email') && target.includes('eventId')) {
-          return {
-            success: false,
-            error: 'ဤ Email ဖြင့် Event ထဲသို့ Register ပြုလုပ်ပြီး ဖြစ်ပါသည်။',
-          }
+    const prismaError = error as { code?: string; meta?: { target?: string[] }; name?: string }
+    if (prismaError?.name === 'PrismaClientKnownRequestError' && prismaError?.code === 'P2002') {
+      const target = prismaError.meta?.target ?? []
+      if (target.includes('email') && target.includes('eventId')) {
+        return {
+          success: false,
+          error: 'ဤ Email ဖြင့် Event ထဲသို့ Register ပြုလုပ်ပြီး ဖြစ်ပါသည်။',
         }
-        if (target.includes('syncId')) {
-          // syncId unique constraint violation — this is actually fine,
-          // means the other concurrent request already created it
-          return { success: true, data: { id: 'already-synced' } }
-        }
+      }
+      if (target.includes('syncId')) {
+        return { success: true, data: { id: 'already-synced' } }
       }
     }
 

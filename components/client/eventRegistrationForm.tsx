@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -12,8 +11,7 @@ import { useEffect, useState } from "react";
 import { syncOfflineRegistrations } from "@/lib/sync";
 import { db } from "@/lib/db";
 
-// Event Object Type Definition
-export interface EventData {
+interface ActiveEvent {
   id: string;
   title: string;
   description?: string | null;
@@ -21,11 +19,6 @@ export interface EventData {
   location?: string | null;
 }
 
-interface EventRegistrationProps {
-  event: EventData | null;
-}
-
-// Zod Validation Schema
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "အမည်သည် အနည်းဆုံး ၂ လုံး ရှိရပါမည်။",
@@ -47,8 +40,10 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function EventRegistrationForm({ event }: EventRegistrationProps) {
+export default function EventRegistrationForm() {
   const [loading, setLoading] = useState(false);
+  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
 
   const {
     register,
@@ -67,30 +62,39 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
     }
   }, [isOnline]);
 
-  // IndexedDB သို့ သိမ်းဆည်းသည့် Logic
-  const handleOfflineSave = async (data: FormValues, eventId: string) => {
+  useEffect(() => {
+    if (!isOnline) {
+      setEventLoading(false);
+      return
+    }
+    fetch("/api/events/active")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.event) setActiveEvent(data.event);
+      })
+      .catch(() => {})
+      .finally(() => setEventLoading(false));
+  }, [isOnline]);
+
+  const handleOfflineSave = async (data: FormValues, eventId: string | undefined) => {
     try {
       const syncId = crypto.randomUUID();
 
-      // IndexedDB ထဲသို့ ထည့်ခြင်း
       await db.pendingRegistrations.add({
         ...data,
         syncId,
-        eventId,
+        eventId: eventId ?? "",
         createdAt: new Date().toISOString(),
         synced: false,
       });
 
-      // Toast ကို SW registration မလုပ်ခင် ချက်ချင်းပြပါ
       toast.warning("Offline Mode: Data ကို စက်ထဲတွင် သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Auto Sync လုပ်ပေးပါမည်။");
 
-      // Background Sync Tag — 2s timeout (offline မှာ hang မဖြစ်စေရန်)
       if ("serviceWorker" in navigator && "SyncManager" in window) {
         try {
           const swTimeout = new Promise((_, reject) =>
             setTimeout(() => reject(new Error("SW ready timeout")), 2000)
           );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const registration = (await Promise.race([
             navigator.serviceWorker.ready,
             swTimeout,
@@ -101,7 +105,6 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
         }
       }
 
-      // Form ကို Reset လုပ်ခြင်း
       reset();
     } catch (dbError) {
       console.error("Dexie Save Error:", dbError);
@@ -110,28 +113,23 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
   };
 
   const onSubmit = async (data: FormValues) => {
-    if (!event?.id) return;
-
     setLoading(true);
 
     try {
       const isReallyOnline = typeof window !== "undefined" && navigator.onLine && isOnline;
 
-      // Offline Mode → IndexedDB ထဲ တန်းသိမ်းမည်
       if (!isReallyOnline) {
-        await handleOfflineSave(data, event.id);
+        await handleOfflineSave(data, activeEvent?.id);
         return;
       }
 
-      // Online Mode → 3s timeout ဖြင့် Server Action ခေါ်မည်
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Network timeout")), 3000)
       );
 
       const result = (await Promise.race([
-        createRegistration({ eventId: event.id, ...data }),
+        createRegistration({ ...data, eventId: activeEvent?.id }),
         timeoutPromise,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ])) as any;
 
       if (result.success) {
@@ -142,16 +140,14 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
       }
     } catch (error) {
       console.warn("Network error/timeout, falling back to IndexedDB:", error);
-      await handleOfflineSave(data, event.id);
+      await handleOfflineSave(data, activeEvent?.id);
     } finally {
       setLoading(false);
     }
   };
 
-  const isFormDisabled = !event || loading;
-
   return (
-   <div className="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 p-4">
       <div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 space-y-6">
         <div className="flex items-center justify-between mb-4">
           <span
@@ -163,8 +159,7 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
           </span>
         </div>
 
-        {/* Active Event Information Banner */}
-        {event ? (
+        {activeEvent ? (
           <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/80 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -175,11 +170,11 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
 
             <div>
               <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-snug">
-                {event.title}
+                {activeEvent.title}
               </h2>
-              {event.description && (
+              {activeEvent.description && (
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 line-clamp-2">
-                  {event.description}
+                  {activeEvent.description}
                 </p>
               )}
             </div>
@@ -188,27 +183,27 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
               <div className="flex items-center gap-1.5">
                 <span>📅</span>
                 <span>
-                  {new Date(event.eventDate).toLocaleDateString("en-US", {
+                  {new Date(activeEvent.eventDate).toLocaleDateString("en-US", {
                     dateStyle: "medium",
                   })}
                 </span>
               </div>
-              {event.location && (
+              {activeEvent.location && (
                 <div className="flex items-center gap-1.5">
                   <span>📍</span>
-                  <span>{event.location}</span>
+                  <span>{activeEvent.location}</span>
                 </div>
               )}
             </div>
           </div>
-        ) : (
+        ) : !eventLoading ? (
           <div className="p-4 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-200 dark:border-amber-900/50 text-xs text-center space-y-1">
-            <p className="font-semibold">လက်ရှိတွင် Active ဖြစ်နေသော Event မရှိသေးပါ။</p>
+           
             <p className="text-amber-700/80 dark:text-amber-400/80">
-              Event အသစ်ဖွင့်လှစ်ချိန်မှသာ Registration ပေးပို့နိုင်ပါမည်။
+             OfflineMode ဖြင့် data ထည့်သွင်း နိုင်ပါသည်
             </p>
           </div>
-        )}
+        ) : null}
 
         <div>
           <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
@@ -219,7 +214,6 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
           </p>
         </div>
 
-        {/* Form Controls */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
@@ -228,7 +222,7 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
             <input
               type="text"
               placeholder="မောင်မောင်"
-              disabled={isFormDisabled}
+              disabled={loading}
               {...register("name")}
               className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
             />
@@ -244,7 +238,7 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
             <input
               type="email"
               placeholder="example@gmail.com"
-              disabled={isFormDisabled}
+              disabled={loading}
               {...register("email")}
               className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
             />
@@ -261,7 +255,7 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
               <input
                 type="number"
                 placeholder="25"
-                disabled={isFormDisabled}
+                disabled={loading}
                 {...register("age")}
                 className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -277,7 +271,7 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
               <input
                 type="text"
                 placeholder="09xxxxxxxxx"
-                disabled={isFormDisabled}
+                disabled={loading}
                 {...register("phone")}
                 className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -296,7 +290,7 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
             <textarea
               rows={3}
               placeholder="ရန်ကုန်မြို့၊ ..."
-              disabled={isFormDisabled}
+              disabled={loading}
               {...register("address")}
               className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
             />
@@ -309,7 +303,7 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
 
           <button
             type="submit"
-            disabled={isFormDisabled}
+            disabled={loading}
             className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-medium rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
@@ -343,7 +337,5 @@ export default function EventRegistrationForm({ event }: EventRegistrationProps)
         </form>
       </div>
     </div>
-   
   );
-
 }

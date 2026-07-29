@@ -8,7 +8,7 @@ export interface OfflineRegistration {
   age: number;
   phone: string;
   address: string;
-  eventId: string;
+  eventId?: string;
   createdAt: string;
   synced: boolean; // Sync ပြီး မပြီး စစ်ရန် flag
   syncId: string; // UUID idempotency key — generated before save to prevent duplicates

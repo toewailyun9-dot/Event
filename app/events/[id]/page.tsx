@@ -26,15 +26,7 @@ export default async function Page({
     return <EventNotFoundState message="ဤ Event ကို ရှာမတွေ့ပါ သို့မဟုတ် စာရင်းလက်ခံခြင်း ပိတ်ထားပါသည်။" />;
   }
 
-
-  return (
-
-     
-            <EventRegistrationForm event={event} />
-        
-
-
-  );
+  return <EventRegistrationForm />;
 }
 
 // Event Not Found State UI Component

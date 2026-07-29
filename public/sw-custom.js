@@ -6,6 +6,16 @@ db.version(1).stores({
   pendingRegistrations: '++id, eventId, synced, createdAt',
 });
 
+// SW install ဖြစ်ချိန်မှာ root page ကို cache ထဲထည့်ထားမယ်
+// ဒါမှ offline မှာလည်း page ကိုပြသနိုင်မယ်
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open('start-url').then((cache) => {
+      return cache.add(new Request('/', { cache: 'reload' })).catch(() => {});
+    })
+  );
+});
+
 // Track consecutive failures to prevent infinite retry loops
 let consecutiveFailures = 0;
 const MAX_CONSECUTIVE_FAILURES = 3;
