@@ -1,0 +1,50 @@
+'use client'
+
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Download } from 'lucide-react'
+import { exportEventCSV } from '@/app/actions/admin'
+
+type Props = {
+  eventId: string
+  label?: string
+}
+
+export default function ExportCSVButton({ eventId, label = 'Export CSV' }: Props) {
+  const [loading, setLoading] = useState(false)
+
+  const handleExport = async () => {
+    setLoading(true)
+    try {
+      const result = await exportEventCSV(eventId)
+      if (!result.success) {
+        toast.error(result.error || 'CSV Export မအောင်မြင်ပါ။')
+        return
+      }
+
+      const blob = new Blob([result.csv], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = result.filename
+      a.click()
+      window.URL.revokeObjectURL(url)
+      toast.success('CSV File Download စတင်ပါပြီ။')
+    } catch {
+      toast.error('CSV Export မအောင်မြင်ပါ။')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleExport}
+      disabled={loading}
+      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg shadow-indigo-600/20 transition"
+    >
+      <Download className="w-4 h-4" />
+      <span>{loading ? 'Exporting...' : label}</span>
+    </button>
+  )
+}

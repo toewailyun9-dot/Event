@@ -84,6 +84,40 @@ export async function getEventsForFilter() {
   }
 }
 
+type ExportCSVSuccess = { success: true; csv: string; filename: string }
+type ExportCSVError = { success: false; error: string }
+type ExportCSVResult = ExportCSVSuccess | ExportCSVError
+
+// ၁.၅။ Event တစ်ခုချင်းစီအတွက် CSV Export
+export async function exportEventCSV(eventId: string): Promise<ExportCSVResult> {
+  try {
+    const auth = await requireAuth()
+    if (!auth.success) return { success: false, error: auth.error }
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        registrations: { orderBy: { createdAt: 'desc' } },
+      },
+    })
+
+    if (!event) return { success: false, error: 'Event မတွေ့ပါ။' }
+
+    const headers = 'Name,Email,Age,Phone,Address,Registered Date,Source\n'
+    const rows = event.registrations.map((r) =>
+      `"${r.fullName}","${r.email}",${r.age},"${r.phone}","${r.address}","${new Date(r.createdAt).toLocaleDateString()}","${r.isOfflineSynced ? 'Synced' : 'Online'}"`
+    )
+
+    const csv = headers + rows.join('\n')
+    const filename = `${event.title.replace(/[^a-zA-Z0-9 ]/g, '_')}-${new Date().toISOString().slice(0, 10)}.csv`
+
+    return { success: true, csv, filename }
+  } catch (error) {
+    console.error('Failed to export CSV:', error)
+    return { success: false, error: 'CSV Export မအောင်မြင်ပါ။' }
+  }
+}
+
 // ၂။ Registration တစ်ခုကို ဖျက်သည့် Action
 export async function deleteRegistration(id: string) {
   try {

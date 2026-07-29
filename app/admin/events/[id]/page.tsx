@@ -10,11 +10,10 @@ import {
   Users, 
   Copy, 
   ExternalLink, 
-  Search, 
-  Download, 
-  
+  Search,
   UserCheck
 } from "lucide-react";
+import ExportCSVButton from "@/components/admin/exportCSVButton";
 
 export default async function AdminEventDetailPage({
   params,
@@ -76,12 +75,7 @@ export default async function AdminEventDetailPage({
               <ExternalLink className="w-4 h-4" />
               <span>Public Form ကြည့်မည်</span>
             </a>
-            <button
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export CSV</span>
-            </button>
+            <ExportCSVButton eventId={id} />
           </div>
         </div>
 

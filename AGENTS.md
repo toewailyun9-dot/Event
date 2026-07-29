@@ -31,7 +31,7 @@ The application must prioritize **data reliability, fast data entry, and resilie
 | ------------------------ | ------------------------ |
 | Framework                | Next.js 16               |
 | Architecture             | App Router               |
-| Bundler                  | Turbopack                |
+| Bundler                  | webpack (Turbopack incompatible with next-pwa) |
 | Backend Mutations        | Server Actions           |
 | Language                 | TypeScript (Strict Mode) |
 | Database                 | PostgreSQL               |
@@ -547,6 +547,8 @@ npm run build
 ```
 
 The production build should pass successfully before changes are pushed to the main branch.
+
+> **Note:** The build script uses the `--webpack` flag because `@ducanh2912/next-pwa` requires webpack (workbox-webpack-plugin) and is incompatible with Turbopack.
 
 ---
 
