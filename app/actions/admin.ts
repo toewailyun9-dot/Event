@@ -103,12 +103,13 @@ export async function exportEventCSV(eventId: string): Promise<ExportCSVResult> 
 
     if (!event) return { success: false, error: 'Event မတွေ့ပါ။' }
 
+    const BOM = '\uFEFF'
     const headers = 'Name,Email,Age,Phone,Address,Registered Date,Source\n'
     const rows = event.registrations.map((r) =>
       `"${r.fullName}","${r.email}",${r.age},"${r.phone}","${r.address}","${new Date(r.createdAt).toLocaleDateString()}","${r.isOfflineSynced ? 'Synced' : 'Online'}"`
     )
 
-    const csv = headers + rows.join('\n')
+    const csv = BOM + headers + rows.join('\n')
     const filename = `${event.title.replace(/[^a-zA-Z0-9 ]/g, '_')}-${new Date().toISOString().slice(0, 10)}.csv`
 
     return { success: true, csv, filename }

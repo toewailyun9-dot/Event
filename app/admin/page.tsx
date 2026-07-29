@@ -137,12 +137,13 @@ export default function AdminDashboard() {
       return
     }
 
+    const BOM = '\uFEFF'
     const headers = ['Name,Email,Age,Phone,Address,Registered Date,Source\n']
     const csvRows = registrations.map((item) =>
       `"${item.fullName}","${item.email}",${item.age},"${item.phone}","${item.address}","${new Date(item.createdAt).toLocaleDateString()}","${item.isOfflineSynced ? 'Synced' : 'Online'}"`
     )
 
-    const blob = new Blob([headers + csvRows.join('\n')], { type: 'text/csv' })
+    const blob = new Blob([BOM + headers + csvRows.join('\n')], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
