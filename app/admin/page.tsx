@@ -137,9 +137,9 @@ export default function AdminDashboard() {
       return
     }
 
-    const headers = ['Name,Email,Age,Phone,Address,Registered Date,Sync Status\n']
+    const headers = ['Name,Email,Age,Phone,Address,Registered Date,Source\n']
     const csvRows = registrations.map((item) =>
-      `"${item.fullName}","${item.email}",${item.age},"${item.phone}","${item.address}","${new Date(item.createdAt).toLocaleDateString()}","${item.isOfflineSynced ? 'Synced' : 'Manual'}"`
+      `"${item.fullName}","${item.email}",${item.age},"${item.phone}","${item.address}","${new Date(item.createdAt).toLocaleDateString()}","${item.isOfflineSynced ? 'Synced' : 'Online'}"`
     )
 
     const blob = new Blob([headers + csvRows.join('\n')], { type: 'text/csv' })
@@ -329,8 +329,8 @@ export default function AdminDashboard() {
                   className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition"
                 >
                   <option value="all">All</option>
-                  <option value="synced">Synced (Online)</option>
-                  <option value="unsynced">Unsynced (Offline)</option>
+                  <option value="synced">Synced (Offline)</option>
+                  <option value="unsynced">Online</option>
                 </select>
               </div>
             </div>
@@ -419,9 +419,9 @@ export default function AdminDashboard() {
                             <span>Synced</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-amber-400 text-xs">
-                            <WifiOff className="w-3.5 h-3.5" />
-                            <span>Manual</span>
+                          <span className="inline-flex items-center gap-1 text-blue-400 text-xs">
+                            <Cloud className="w-3.5 h-3.5" />
+                            <span>Online</span>
                           </span>
                         )}
                       </td>
