@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import EventCardActions from '@/components/admin/eventCardActions'
 import CreateEventButton from '@/components/admin/createEventButton'
+import EditEventButton from '@/components/admin/editEventButton'
+import DeleteEventButton from '@/components/admin/deleteEventButton'
 
 export const revalidate = 0 // Data အမြဲတမ်း Fresh ဖြစ်နေစေရန်
 
@@ -113,7 +115,7 @@ export default async function AdminEventsPage() {
                 </div>
 
                 {/* Event Card Bottom Actions */}
-                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                     {event._count.registrations}{' '}
                     <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
@@ -121,7 +123,7 @@ export default async function AdminEventsPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center flex-wrap gap-2">
                     {/* Toggle Button ပါဝင်သော Actions Component */}
                     <EventCardActions id={event.id} isActive={event.isActive} />
                     
@@ -131,6 +133,21 @@ export default async function AdminEventsPage() {
                     >
                       View List
                     </Link>
+
+                    <EditEventButton
+                      event={{
+                        id: event.id,
+                        title: event.title,
+                        slug: event.slug,
+                        eventDate: event.eventDate.toISOString(),
+                        location: event.location,
+                      }}
+                    />
+                    <DeleteEventButton
+                      id={event.id}
+                      title={event.title}
+                      registrationCount={event._count.registrations}
+                    />
                   </div>
                 </div>
               </div>

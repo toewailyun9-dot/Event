@@ -3,13 +3,25 @@ import z from "zod";
 export const createEventSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   slug: z.string().min(1, "Slug is required").max(200).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
-  eventDate: z.string().transform((val) => new Date(val)),
+  eventDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)),
   location: z.string().max(500).optional(),
 });
 
 export const toggleEventStatusSchema = z.object({
   id: z.string().min(1),
   currentStatus: z.boolean(),
+});
+
+export const updateEventSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1, "Title is required").max(200),
+  slug: z.string().min(1, "Slug is required").max(200).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
+  eventDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)),
+  location: z.string().max(500).optional(),
+});
+
+export const deleteEventSchema = z.object({
+  id: z.string().min(1),
 });
 
 export const deleteRegistrationSchema = z.object({

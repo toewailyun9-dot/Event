@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { createEventSchema, toggleEventStatusSchema, deleteRegistrationSchema, getRegistrationsSchema } from "@/lib/validation/admin"
+import { createEventSchema, toggleEventStatusSchema, deleteRegistrationSchema, getRegistrationsSchema, updateEventSchema, deleteEventSchema } from "@/lib/validation/admin"
 
 describe("createEventSchema", () => {
   it("accepts valid event data", () => {
@@ -59,6 +59,18 @@ describe("createEventSchema", () => {
       expect(result.data.eventDate).toBeInstanceOf(Date)
     }
   })
+
+  it("accepts eventDate as Date object (server action serialization)", () => {
+    const result = createEventSchema.safeParse({
+      title: "Workshop",
+      slug: "workshop",
+      eventDate: new Date("2026-12-01T09:00:00Z"),
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.eventDate).toBeInstanceOf(Date)
+    }
+  })
 })
 
 describe("toggleEventStatusSchema", () => {
@@ -86,6 +98,57 @@ describe("deleteRegistrationSchema", () => {
 
   it("rejects empty id", () => {
     const result = deleteRegistrationSchema.safeParse({ id: "" })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("updateEventSchema", () => {
+  const base = {
+    id: "evt_001",
+    title: "Tech Conference 2026",
+    slug: "tech-conf-2026",
+    eventDate: "2026-12-01T09:00:00Z",
+    location: "Yangon",
+  }
+
+  it("accepts valid event data", () => {
+    const result = updateEventSchema.safeParse(base)
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts eventDate as Date object", () => {
+    const result = updateEventSchema.safeParse({ ...base, eventDate: new Date("2026-12-01T09:00:00Z") })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.eventDate).toBeInstanceOf(Date)
+    }
+  })
+
+  it("rejects missing id", () => {
+    const { id, ...rest } = base
+    const result = updateEventSchema.safeParse(rest)
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects empty title", () => {
+    const result = updateEventSchema.safeParse({ ...base, title: "" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects invalid slug", () => {
+    const result = updateEventSchema.safeParse({ ...base, slug: "Invalid Slug" })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("deleteEventSchema", () => {
+  it("accepts valid id", () => {
+    const result = deleteEventSchema.safeParse({ id: "evt_001" })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects empty id", () => {
+    const result = deleteEventSchema.safeParse({ id: "" })
     expect(result.success).toBe(false)
   })
 })

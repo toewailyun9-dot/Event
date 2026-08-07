@@ -3,13 +3,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-
 import { toast } from "sonner";
 import { createRegistration } from "@/app/actions/registration";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEffect, useState } from "react";
 import { syncOfflineRegistrations } from "@/lib/sync";
 import { db } from "@/lib/db";
+
+
 
 interface ActiveEvent {
   id: string;
@@ -66,23 +67,32 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
     }
   }, [isOnline]);
 
-  useEffect(() => {
-    if (initialEvent) {
-      setEventLoading(false);
-      return;
-    }
-    if (!isOnline) {
-      setEventLoading(false);
-      return
-    }
-    fetch("/api/events/active")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.event) setActiveEvent(data.event);
-      })
-      .catch(() => {})
-      .finally(() => setEventLoading(false));
-  }, [isOnline, initialEvent]);
+ useEffect(() => {
+  if (initialEvent) return;
+
+  
+  if (!isOnline) {
+    const timer = setTimeout(() => setEventLoading(false), 0);
+    return () => clearTimeout(timer);
+  }
+
+  let isMounted = true;
+
+  fetch("/api/events/active")
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (isMounted && data?.event) setActiveEvent(data.event);
+    })
+    .catch(() => {})
+    .finally(() => {
+      if (isMounted) setEventLoading(false);
+    });
+
+  return () => {
+    isMounted = false;
+  };
+}, [isOnline, initialEvent]);
+
 
   const handleOfflineSave = async (data: FormValues, eventId: string | undefined) => {
     try {
@@ -107,6 +117,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
             navigator.serviceWorker.ready,
             swTimeout,
           ])) as any;
+
           await registration.sync.register("sync-registrations");
         } catch (err) {
           console.warn("SW Sync registration skipped (offline or timeout):", err);

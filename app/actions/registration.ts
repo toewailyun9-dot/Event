@@ -5,9 +5,6 @@ import { createRegistrationSchema } from '@/lib/validation/registerations'
 import { revalidatePath } from 'next/cache'
 import z from 'zod'
 
-
-
-
 export type CreateRegistrationInput = z.infer<typeof createRegistrationSchema>
 
 export async function createRegistration(data: CreateRegistrationInput) {
