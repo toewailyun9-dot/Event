@@ -9,14 +9,8 @@ type Props = {
     id: string,
     isActive: boolean
 }
-export default function EventCardActions({ slug ,id , isActive}: Props) {
-  const handleCopyLink = () => {
-    const origin = window.location.origin
-    const fullUrl = `${origin}/events/${slug}`
+export default function EventCardActions({ id , isActive}: Props) {
 
-    navigator.clipboard.writeText(fullUrl)
-    toast.success('Registration Link ကို Copy ကူးပြီးပါပြီ!')
-  }
 const [isPending, startTransition] = useTransition()
 
   const handleToggle = () => {
@@ -31,12 +25,7 @@ const [isPending, startTransition] = useTransition()
   }
   return (
     <div className='flex gap-2'>
-    <button
-      onClick={handleCopyLink}
-      className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium rounded-lg transition"
-    >
-      Copy Link
-    </button>
+    
     <button
         onClick={handleToggle}
         disabled={isPending}

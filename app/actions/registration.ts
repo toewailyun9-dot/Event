@@ -69,8 +69,6 @@ export async function createRegistration(data: CreateRegistrationInput) {
         age: validatedData.age,
         phone: validatedData.phone,
         address: validatedData.address,
-        // If this came from offline sync, tag it
-        isOfflineSynced: validatedData.isOfflineSynced ?? false,
         // Store the idempotency key
         ...(validatedData.syncId ? { syncId: validatedData.syncId } : {}),
       },
@@ -176,7 +174,6 @@ export async function createRegistrationsBatch(items: CreateRegistrationInput[])
         age: item.age,
         phone: item.phone,
         address: item.address,
-        isOfflineSynced: item.isOfflineSynced ?? false,
         ...(item.syncId ? { syncId: item.syncId } : {}),
       }))
 

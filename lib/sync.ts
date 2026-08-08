@@ -100,7 +100,6 @@ export async function syncOfflineRegistrations({
               phone: item.phone,
               address: item.address,
               syncId: item.syncId,
-              isOfflineSynced: true,
             }))
           ),
         });

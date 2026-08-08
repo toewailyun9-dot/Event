@@ -61,14 +61,4 @@ describe("createRegistrationSchema", () => {
     const result = createRegistrationSchema.safeParse({ ...validData, syncId: "uuid-123" })
     expect(result.success).toBe(true)
   })
-
-  it("accepts isOfflineSynced field", () => {
-    const result = createRegistrationSchema.safeParse({ ...validData, isOfflineSynced: true })
-    expect(result.success).toBe(true)
-  })
-
-  it("accepts isOfflineSynced=false", () => {
-    const result = createRegistrationSchema.safeParse({ ...validData, isOfflineSynced: false })
-    expect(result.success).toBe(true)
-  })
 })

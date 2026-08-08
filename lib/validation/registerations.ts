@@ -10,6 +10,4 @@ export const createRegistrationSchema = z.object({
   address: z.string().min(5, { message: 'လိပ်စာသည် အနည်းဆုံး ၅ လုံး ရှိရပါမည်။' }),
   // Idempotency key for offline→online sync deduplication
   syncId: z.string().optional(),
-  // Whether this registration came from offline sync
-  isOfflineSynced: z.boolean().optional(),
 })

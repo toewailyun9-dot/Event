@@ -71,6 +71,44 @@ describe("createEventSchema", () => {
       expect(result.data.eventDate).toBeInstanceOf(Date)
     }
   })
+
+  it("rejects eventDate in the past", () => {
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const result = createEventSchema.safeParse({
+      title: "Workshop",
+      slug: "workshop",
+      eventDate: past,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects eventDate in the past (Date object)", () => {
+    const result = createEventSchema.safeParse({
+      title: "Workshop",
+      slug: "workshop",
+      eventDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("accepts a future eventDate", () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    const result = createEventSchema.safeParse({
+      title: "Workshop",
+      slug: "workshop",
+      eventDate: future,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects an invalid eventDate string", () => {
+    const result = createEventSchema.safeParse({
+      title: "Workshop",
+      slug: "workshop",
+      eventDate: "not-a-date",
+    })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe("toggleEventStatusSchema", () => {
@@ -176,17 +214,6 @@ describe("getRegistrationsSchema", () => {
   it("accepts date range", () => {
     const result = getRegistrationsSchema.safeParse({ dateFrom: "2026-01-01", dateTo: "2026-12-31" })
     expect(result.success).toBe(true)
-  })
-
-  it("accepts syncStatus enum values", () => {
-    expect(getRegistrationsSchema.safeParse({ syncStatus: "all" }).success).toBe(true)
-    expect(getRegistrationsSchema.safeParse({ syncStatus: "synced" }).success).toBe(true)
-    expect(getRegistrationsSchema.safeParse({ syncStatus: "unsynced" }).success).toBe(true)
-  })
-
-  it("rejects invalid syncStatus", () => {
-    const result = getRegistrationsSchema.safeParse({ syncStatus: "invalid" })
-    expect(result.success).toBe(false)
   })
 
   it("rejects pageSize over 500", () => {

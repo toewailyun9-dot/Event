@@ -49,12 +49,8 @@ model Registration {
   fullName  String
   email     String
   phone     String
-   age      Int
-   address  String
-
-  // Offline-First Tracking
-  // Dexie.js (Offline DB) မှ Sync လုပ်လာသော Data ဟုတ်မဟုတ် မှတ်သားရန်
-  isOfflineSynced Boolean  @default(false)
+  age      Int
+  address  String
 
   // Idempotency Key - UUID generated on client before Dexie save.
   // This prevents duplicate registrations when both SW Background Sync

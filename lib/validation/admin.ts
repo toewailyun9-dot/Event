@@ -1,9 +1,20 @@
 import z from "zod";
 
+const eventDateSchema = z
+  .union([z.string(), z.date()])
+  .transform((val) => new Date(val))
+  .refine((date) => !Number.isNaN(date.getTime()), {
+    message: "မှန်ကန်သော ရက်စွဲနှင့် အချိန် ထည့်သွင်းပါ။",
+  })
+  // Events may only be created for the present or the future.
+  .refine((date) => date.getTime() >= Date.now(), {
+    message: "Event ရက်စွဲသည် လက်ရှိအချိန်ထက် မစောနိုင်ပါ။",
+  });
+
 export const createEventSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   slug: z.string().min(1, "Slug is required").max(200).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
-  eventDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)),
+  eventDate: eventDateSchema,
   location: z.string().max(500).optional(),
 });
 
@@ -35,5 +46,4 @@ export const getRegistrationsSchema = z.object({
   eventId: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
-  syncStatus: z.enum(["all", "synced", "unsynced"]).optional(),
 });

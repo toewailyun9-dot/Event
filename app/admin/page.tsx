@@ -16,14 +16,13 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Cloud,
-  Wifi,
-  WifiOff,
   CalendarRange,
 } from 'lucide-react'
 
 import CreateEventButton from '@/components/admin/createEventButton'
+import ImportCSVButton from '@/components/admin/importCSVButton'
 import { useDebounce } from '@/hooks/useDebounce'
+import { csvCell, csvField } from '@/lib/csv'
 
 type Registration = {
   id: string
@@ -33,7 +32,7 @@ type Registration = {
   phone: string
   address: string
   createdAt: Date
-  isOfflineSynced?: boolean
+  event?: { title: string } | null
 }
 
 type EventOption = {
@@ -57,7 +56,6 @@ export default function AdminDashboard() {
   const [filterEventId, setFilterEventId] = useState('')
   const [filterDateFrom, setFilterDateFrom] = useState('')
   const [filterDateTo, setFilterDateTo] = useState('')
-  const [filterSyncStatus, setFilterSyncStatus] = useState<'all' | 'synced' | 'unsynced'>('all')
 
   useEffect(() => {
     getEventsForFilter().then((result) => {
@@ -65,7 +63,7 @@ export default function AdminDashboard() {
     })
   }, [])
 
-  const fetchData = useCallback(async (searchVal: string, pageNum: number, filters?: { eventId?: string; dateFrom?: string; dateTo?: string; syncStatus?: string }) => {
+  const fetchData = useCallback(async (searchVal: string, pageNum: number, filters?: { eventId?: string; dateFrom?: string; dateTo?: string }) => {
     setLoading(true)
     try {
       const result = await getRegistrations({
@@ -75,7 +73,6 @@ export default function AdminDashboard() {
         eventId: filters?.eventId || undefined,
         dateFrom: filters?.dateFrom || undefined,
         dateTo: filters?.dateTo || undefined,
-        syncStatus: filters?.syncStatus as 'all' | 'synced' | 'unsynced' | undefined,
       })
       if (result.success && result.data) {
         setRegistrations(result.data)
@@ -99,19 +96,17 @@ export default function AdminDashboard() {
       eventId: filterEventId,
       dateFrom: filterDateFrom,
       dateTo: filterDateTo,
-      syncStatus: filterSyncStatus,
     })
-  }, [fetchData, debouncedSearch, page, filterEventId, filterDateFrom, filterDateTo, filterSyncStatus])
+  }, [fetchData, debouncedSearch, page, filterEventId, filterDateFrom, filterDateTo])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
-  const hasActiveFilters = filterEventId || filterDateFrom || filterDateTo || filterSyncStatus !== 'all'
+  const hasActiveFilters = filterEventId || filterDateFrom || filterDateTo
 
   const clearFilters = () => {
     setFilterEventId('')
     setFilterDateFrom('')
     setFilterDateTo('')
-    setFilterSyncStatus('all')
     setPage(1)
   }
 
@@ -137,9 +132,16 @@ export default function AdminDashboard() {
     }
 
     const BOM = '\uFEFF'
-    const headers = ['Name,Email,Age,Phone,Address,Registered Date,Source\n']
+    const headers = ['Name,Email,Age,Phone,Address,Registered Date\n']
     const csvRows = registrations.map((item) =>
-      `"${item.fullName}","${item.email}",${item.age},"${item.phone}","${item.address}","${new Date(item.createdAt).toLocaleDateString()}","${item.isOfflineSynced ? 'Synced' : 'Online'}"`
+      [
+        csvField(item.fullName),
+        csvField(item.email),
+        item.age,
+        csvCell(item.phone),
+        csvField(item.address),
+        csvField(new Date(item.createdAt).toLocaleDateString()),
+      ].join(',')
     )
 
     const blob = new Blob([BOM + headers + csvRows.join('\n')], { type: 'text/csv' })
@@ -185,6 +187,8 @@ export default function AdminDashboard() {
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
             </button>
+
+            <ImportCSVButton eventId={filterEventId || undefined} />
 
             <button
               onClick={() => fetchData(debouncedSearch, page)}
@@ -249,7 +253,7 @@ export default function AdminDashboard() {
             <span>Filters</span>
             {hasActiveFilters && (
               <span className="ml-1.5 text-xs bg-indigo-500/30 text-indigo-200 px-1.5 py-0.5 rounded-full">
-                {[filterEventId, filterDateFrom, filterDateTo, filterSyncStatus !== 'all' ? filterSyncStatus : ''].filter(Boolean).length}
+                {[filterEventId, filterDateFrom, filterDateTo].filter(Boolean).length}
               </span>
             )}
           </button>
@@ -280,7 +284,7 @@ export default function AdminDashboard() {
         {/* Filter Panel */}
         {showFilters && (
           <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {/* Event Filter */}
               <div>
                 <label className="block text-xs text-zinc-500 mb-1.5 font-medium">Event</label>
@@ -319,20 +323,6 @@ export default function AdminDashboard() {
                   className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition [color-scheme:dark]"
                 />
               </div>
-
-              {/* Sync Status */}
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">Sync Status</label>
-                <select
-                  value={filterSyncStatus}
-                  onChange={(e) => { setFilterSyncStatus(e.target.value as 'all' | 'synced' | 'unsynced'); setPage(1) }}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition"
-                >
-                  <option value="all">All</option>
-                  <option value="synced">Synced (Offline)</option>
-                  <option value="unsynced">Online</option>
-                </select>
-              </div>
             </div>
 
             {hasActiveFilters && (
@@ -364,15 +354,14 @@ export default function AdminDashboard() {
         {/* Table */}
         <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
+            <table className="w-full text-left border-collapse text-xs">              <thead>
                 <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 uppercase tracking-wider font-semibold">
                   <th className="py-3.5 px-5">Name</th>
                   <th className="py-3.5 px-5">Email</th>
                   <th className="py-3.5 px-5">Age</th>
                   <th className="py-3.5 px-5">Phone</th>
                   <th className="py-3.5 px-5">Address</th>
-                  <th className="py-3.5 px-5">Sync</th>
+                  <th className="py-3.5 px-5">Event</th>
                   <th className="py-3.5 px-5">Date</th>
                   <th className="py-3.5 px-5 text-right">Action</th>
                 </tr>
@@ -413,17 +402,9 @@ export default function AdminDashboard() {
                         {item.address}
                       </td>
                       <td className="py-4 px-5">
-                        {item.isOfflineSynced ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-400 text-xs">
-                            <Wifi className="w-3.5 h-3.5" />
-                            <span>Synced</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-blue-400 text-xs">
-                            <Cloud className="w-3.5 h-3.5" />
-                            <span>Online</span>
-                          </span>
-                        )}
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs max-w-[180px] truncate">
+                          {item.event?.title ?? '—'}
+                        </span>
                       </td>
                       <td className="py-4 px-5 text-zinc-500">
                         {new Date(item.createdAt).toLocaleDateString("en-US", {
@@ -452,6 +433,36 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Footer */}
+          {total > 0 && (
+            <div className="px-5 py-4 border-t border-zinc-800/60 flex items-center justify-between">
+              <span className="text-xs text-zinc-500">
+                စုစုပေါင်း {total} ခု
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2 text-xs text-zinc-400">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="px-2">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

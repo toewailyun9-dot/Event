@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/lib/auth'
+import z from 'zod'
 import { createEventSchema, toggleEventStatusSchema, updateEventSchema, deleteEventSchema } from '@/lib/validation/admin'
 
 export async function createEvent(data: {
@@ -29,6 +30,12 @@ export async function createEvent(data: {
     revalidatePath('/admin/events')
     return { success: true, data: newEvent }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: error.errors[0]?.message || 'ဖြည့်သွင်းချက်များ မှားယွင်းနေပါသည်။',
+      }
+    }
     console.error('Create Event Error:', error)
     return { success: false, error: 'Event ဖန်တီးခြင်း မအောင်မြင်ပါ။' }
   }

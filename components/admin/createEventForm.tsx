@@ -20,6 +20,14 @@ export default function CreateEventForm({ onClose }: CreateEventFormProps) {
   const [eventDate, setEventDate] = useState('')
   const [location, setLocation] = useState('')
 
+  // The event date/time cannot be in the past — the browser's datetime-local
+  // input is given this as its `min`, and we also re-check on submit.
+  const minDateTime = new Date(
+    Date.now() - new Date().getTimezoneOffset() * 60000
+  )
+    .toISOString()
+    .slice(0, 16)
+
   // Title ရိုက်ထည့်သည်နှင့် Slug ကို Auto ပြောင်းပေးမည့် Function
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value
@@ -37,10 +45,22 @@ export default function CreateEventForm({ onClose }: CreateEventFormProps) {
     setLoading(true)
 
     try {
+      const selectedDate = new Date(eventDate)
+
+      if (Number.isNaN(selectedDate.getTime())) {
+        toast.error('မှန်ကန်သော ရက်စွဲနှင့် အချိန် ထည့်သွင်းပါ။')
+        return
+      }
+
+      if (selectedDate.getTime() < Date.now()) {
+        toast.error('Event ရက်စွဲသည် လက်ရှိအချိန်ထက် မစောနိုင်ပါ။')
+        return
+      }
+
       const result = await createEvent({
         title,
         slug,
-        eventDate: new Date(eventDate),
+        eventDate: selectedDate,
         location,
       })
 
@@ -126,9 +146,10 @@ export default function CreateEventForm({ onClose }: CreateEventFormProps) {
               id="eventDate"
               type="datetime-local"
               required
+              min={minDateTime}
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-indigo-500 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 scheme-light dark:scheme-dark"
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-indigo-500 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 scheme-light dark:scheme-dark"
             />
           </div>
 
