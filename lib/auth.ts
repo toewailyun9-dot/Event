@@ -1,6 +1,10 @@
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 
+if (!process.env.AUTH_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("AUTH_SECRET is not set in production. Please set it in your environment variables.");
+}
+
 const ADMIN_SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "fallback-secret-change-in-production"
 )

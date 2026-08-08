@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest"
-import { rateLimit } from "@/lib/rate-limit"
+import { describe, it, expect, beforeEach, vi } from "vitest"
+import { rateLimit, getClientIp } from "@/lib/rate-limit"
 
 describe("rateLimit", () => {
   beforeEach(() => {
@@ -58,5 +58,20 @@ describe("rateLimit", () => {
 
     const result = fastLimiter("test-5")
     expect(result.allowed).toBe(true)
+  })
+})
+
+describe("getClientIp", () => {
+  it("prefers the first x-forwarded-for hop", () => {
+    const headers = new Headers({
+      "x-forwarded-for": "1.2.3.4, 10.0.0.1",
+      "x-real-ip": "9.9.9.9",
+    })
+    expect(getClientIp(headers)).toBe("1.2.3.4")
+  })
+
+  it("falls back to x-real-ip then anonymous", () => {
+    expect(getClientIp(new Headers({ "x-real-ip": "8.8.8.8" }))).toBe("8.8.8.8")
+    expect(getClientIp(new Headers())).toBe("anonymous")
   })
 })

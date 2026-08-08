@@ -1,30 +1,15 @@
 import { createRegistration } from "@/app/actions/registration";
 import { createRegistrationSchema } from "@/lib/validation/registerations";
-import { rateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
-const limit = rateLimit({
-  // Configurable via env. Default 300/min/IP (was 10/min) — an event gate
-  // where many people share one public IP/WiFi legitimately needs far more
-  // than 10 requests per minute. Tune via RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_MS.
-  maxRequests: parseInt(process.env.RATE_LIMIT_MAX || "300", 10) || 300,
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10) || 60000,
-});
-
+/**
+ * HTTP wrapper around createRegistration.
+ * Rate limiting lives in the Server Action so the online form path
+ * (which calls the action directly) is covered too — do not re-check here
+ * or a single API request would consume two limiter slots.
+ */
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || request.headers.get("x-real-ip")
-      || "anonymous";
-
-    const { allowed, remaining } = limit(ip);
-    if (!allowed) {
-      return NextResponse.json(
-        { success: false, error: "Too many requests. Please try again later." },
-        { status: 429, headers: { "Retry-After": "60" } }
-      );
-    }
-
     const contentLength = request.headers.get("content-length");
     if (contentLength && parseInt(contentLength) > 100_000) {
       return NextResponse.json(
@@ -42,9 +27,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, data: result.data }, { status: 200 });
     }
 
+    const status =
+      result.error === "Too many requests. Please try again later." ? 429 : 409;
+
     return NextResponse.json(
       { success: false, error: result.error },
-      { status: 409 }
+      {
+        status,
+        ...(status === 429 ? { headers: { "Retry-After": "60" } } : {}),
+      }
     );
   } catch (error) {
     return NextResponse.json(

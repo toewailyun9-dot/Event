@@ -1,7 +1,9 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
+import { getClientIp, registrationRateLimit } from '@/lib/rate-limit'
 import { createRegistrationSchema } from '@/lib/validation/registerations'
+import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import z from 'zod'
 
@@ -9,6 +11,17 @@ export type CreateRegistrationInput = z.infer<typeof createRegistrationSchema>
 
 export async function createRegistration(data: CreateRegistrationInput) {
   try {
+    // Rate-limit at the action layer so the online form path cannot bypass
+    // the guard that previously lived only on /api/register.
+    const ip = getClientIp(await headers())
+    const { allowed } = registrationRateLimit(ip)
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Too many requests. Please try again later.',
+      }
+    }
+
     // 1. Server-side Data Validation
     const validatedData = createRegistrationSchema.parse(data)
 

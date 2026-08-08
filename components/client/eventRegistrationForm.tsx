@@ -9,6 +9,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEffect, useState } from "react";
 import { requestOfflineSync, warnIfPendingQueueLarge } from "@/lib/sync";
 import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 
 
@@ -49,6 +50,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
   const [loading, setLoading] = useState(false);
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(initialEvent ?? null);
   const [eventLoading, setEventLoading] = useState(!initialEvent);
+  const pendingCount = useLiveQuery(() => db.pendingRegistrations.count(), []) ?? 0;
 
   const {
     register,
@@ -106,7 +108,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
         synced: false,
       });
 
-      toast.warning("Offline Mode: Data ကို စက်ထဲတွင် သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Auto Sync လုပ်ပေးပါမည်။");
+      toast.success("register ဖြည့်ခြင်း အောင်မြင် ပါသည်။ အင်တာနက်ရသည်နှင့် ပေးပို့ပါမည်။", { icon: "📥" });
 
       // Warn the operator if a lot of unsynced records are accumulating locally
       // (browsers have limited IndexedDB storage, so this prevents a full
@@ -173,14 +175,20 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 p-4">
       <div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 space-y-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <span
-            className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+            className={`text-xs px-2.5 py-1 rounded-full font-medium w-fit ${
               isOnline ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
             }`}
           >
             {isOnline ? "🌐 Online" : "📴 Offline Mode (Saved locally)"}
           </span>
+          {pendingCount > 0 && (
+            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 w-fit animate-pulse flex items-center gap-1.5">
+              <span>📤</span>
+              မပို့ရသေးသော စာရင်း ({pendingCount}) ခု ရှိပါသည်
+            </span>
+          )}
         </div>
 
         {activeEvent ? (
@@ -221,10 +229,13 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
             </div>
           </div>
         ) : !eventLoading ? (
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-200 dark:border-amber-900/50 text-xs text-center space-y-1">
-           
-            <p className="text-amber-700/80 dark:text-amber-400/80">
-             OfflineMode ဖြင့် data ထည့်သွင်း နိုင်ပါသည်
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-200 dark:border-amber-900/50 text-sm text-center space-y-2">
+            <div className="flex items-center justify-center gap-2 font-semibold">
+              <span className="text-amber-500">⚠️</span>
+              <p>အင်တာနက်လိုင်း ပြတ်တောက်နေပါသည်</p>
+            </div>
+            <p className="text-amber-700/80 dark:text-amber-400/80 text-xs leading-relaxed">
+             သို့သော် ဖောင်ဆက်ဖြည့်နိုင်ပြီး အင်တာနက်ပြန်လည်ရရှိချိန်တွင် အလိုအလျောက် ပေးပို့ပေးပါမည်။
             </p>
           </div>
         ) : null}
