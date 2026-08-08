@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { createRegistration } from "@/app/actions/registration";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEffect, useState } from "react";
-import { syncOfflineRegistrations } from "@/lib/sync";
+import { requestOfflineSync, warnIfPendingQueueLarge } from "@/lib/sync";
 import { db } from "@/lib/db";
 
 
@@ -63,7 +63,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
 
   useEffect(() => {
     if (isOnline) {
-      syncOfflineRegistrations();
+      requestOfflineSync();
     }
   }, [isOnline]);
 
@@ -107,6 +107,11 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
       });
 
       toast.warning("Offline Mode: Data ကို စက်ထဲတွင် သိမ်းဆည်းပြီးပါပြီ။ အင်တာနက်ရသည်နှင့် Auto Sync လုပ်ပေးပါမည်။");
+
+      // Warn the operator if a lot of unsynced records are accumulating locally
+      // (browsers have limited IndexedDB storage, so this prevents a full
+      // browser quota from silently dropping new offline entries).
+      await warnIfPendingQueueLarge();
 
       if ("serviceWorker" in navigator && "SyncManager" in window) {
         try {

@@ -1,13 +1,12 @@
-import { createRegistration } from "@/app/actions/registration";
-import { createRegistrationSchema } from "@/lib/validation/registerations";
+import { createRegistrationsBatch } from "@/app/actions/registration";
 import { rateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 const limit = rateLimit({
-  // Configurable via env. Default 300/min/IP (was 10/min) — an event gate
-  // where many people share one public IP/WiFi legitimately needs far more
-  // than 10 requests per minute. Tune via RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_MS.
-  maxRequests: parseInt(process.env.RATE_LIMIT_MAX || "300", 10) || 300,
+  // Configurable via env. Batch sync legitimately sends fewer, larger
+  // requests than the single-registration route, so allow a higher rate.
+  // Tune via RATE_LIMIT_BATCH_MAX / RATE_LIMIT_WINDOW_MS.
+  maxRequests: parseInt(process.env.RATE_LIMIT_BATCH_MAX || "1000", 10) || 1000,
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10) || 60000,
 });
 
@@ -17,7 +16,7 @@ export async function POST(request: Request) {
       || request.headers.get("x-real-ip")
       || "anonymous";
 
-    const { allowed, remaining } = limit(ip);
+    const { allowed } = limit(ip);
     if (!allowed) {
       return NextResponse.json(
         { success: false, error: "Too many requests. Please try again later." },
@@ -26,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     const contentLength = request.headers.get("content-length");
-    if (contentLength && parseInt(contentLength) > 100_000) {
+    if (contentLength && parseInt(contentLength) > 200_000) {
       return NextResponse.json(
         { success: false, error: "Request body too large" },
         { status: 413 }
@@ -34,21 +33,26 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const validated = createRegistrationSchema.parse(body);
+    if (!Array.isArray(body)) {
+      return NextResponse.json(
+        { success: false, error: "Expected an array of registrations" },
+        { status: 400 }
+      );
+    }
 
-    const result = await createRegistration(validated);
+    const result = await createRegistrationsBatch(body);
 
     if (result.success) {
-      return NextResponse.json({ success: true, data: result.data }, { status: 200 });
+      return NextResponse.json({ success: true, data: result }, { status: 200 });
     }
 
     return NextResponse.json(
       { success: false, error: result.error },
-      { status: 409 }
+      { status: 400 }
     );
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Registration failed" },
+      { success: false, error: "Batch registration failed" },
       { status: 400 }
     );
   }

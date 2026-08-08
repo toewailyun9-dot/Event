@@ -28,6 +28,10 @@ self.addEventListener('sync', (event) => {
   }
 });
 
+// Send offline records to the server in batches so a large offline queue
+// (e.g. 800 records) costs 16 requests instead of 800 sequential ones.
+const SYNC_BATCH_SIZE = 50;
+
 async function syncDataWithServer() {
   try {
     // Only fetch items that have NOT been synced yet
@@ -46,36 +50,43 @@ async function syncDataWithServer() {
 
     let batchSuccess = true;
 
-    for (const item of pendingList) {
-      try {
+    for (let i = 0; i < pendingList.length; i += SYNC_BATCH_SIZE) {
+      const chunk = pendingList.slice(i, i + SYNC_BATCH_SIZE);
+      const payload = chunk.map((item) => {
         // Only send the necessary fields — exclude Dexie internal fields
         const { id, synced, createdAt, ...cleanPayload } = item;
+        return cleanPayload;
+      });
 
-        const response = await fetch('/api/register', {
+      try {
+        const response = await fetch('/api/register/batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(cleanPayload),
+          body: JSON.stringify(payload),
         });
 
         if (response.ok) {
-          // Success — delete from local Dexie DB
-          await db.pendingRegistrations.delete(item.id);
-          console.log(`[SW] Successfully synced and deleted ID: ${item.id}`);
-        } else if (response.status === 409) {
-          // Conflict — server already has this registration (duplicate syncId or email)
-          // Safe to delete from local — it's already on the server
-          console.log(`[SW] Duplicate detected (409), removing local ID: ${item.id}`);
-          await db.pendingRegistrations.delete(item.id);
-        } else {
-          // Server returned an error (e.g. 422 validation, 500 server error)
-          // Keep the item in Dexie for potential retry, but log it
-          console.error(`[SW] Server returned status ${response.status} for ID: ${item.id}`);
+          // Success — delete the whole chunk from local Dexie DB
+          for (const item of chunk) {
+            await db.pendingRegistrations.delete(item.id);
+          }
+          console.log(`[SW] Successfully synced and deleted chunk (${chunk.length} items)`);
+        } else if (response.status === 429) {
+          // Rate limited — stop for now, keep everything locally for retry
+          console.warn(`[SW] Rate limited (429), keeping ${pendingList.length - i} items for retry.`);
           batchSuccess = false;
+          break;
+        } else {
+          // Server returned an error — keep the chunk for potential retry
+          console.error(`[SW] Server returned status ${response.status} for chunk.`);
+          batchSuccess = false;
+          break;
         }
       } catch (err) {
-        // Network error — keep the item for retry, don't block other items
-        console.error(`[SW] Network error for item ID: ${item.id}`, err);
+        // Network error — keep remaining chunks for retry
+        console.error(`[SW] Network error syncing chunk:`, err);
         batchSuccess = false;
+        break;
       }
     }
 

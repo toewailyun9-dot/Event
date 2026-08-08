@@ -4,7 +4,14 @@ import { PrismaClient } from "../generated/prisma/client";
 
 const connectionString = `${process.env.DATABASE_URL}`;
 
-const adapter = new PrismaPg({ connectionString });
+// Configurable connection-pool size. The pg default is 10, which queues
+// the tail of a concurrent registration burst (800 concurrent writes had
+// ~5s p95 latency in load tests). 20-30 keeps throughput high while
+// staying well under Neon's connection limit (100 on the free tier).
+// Tune via DB_POOL_MAX.
+const poolMax = parseInt(process.env.DB_POOL_MAX || "20", 10) || 20;
+
+const adapter = new PrismaPg({ connectionString, max: poolMax });
 const prisma = new PrismaClient({ adapter });
 
 export { prisma };

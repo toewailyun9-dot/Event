@@ -52,7 +52,6 @@ export default function AdminDashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
-
   const [events, setEvents] = useState<EventOption[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [filterEventId, setFilterEventId] = useState('')

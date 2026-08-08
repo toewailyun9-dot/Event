@@ -2,6 +2,7 @@ import { Geist_Mono, Figtree } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import SyncManager from "@/components/client/syncManager"
 import { cn } from "@/lib/utils";
 import { Toaster } from 'sonner';
 import { Metadata, Viewport } from "next";
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body>
         <Toaster position="top-right" richColors />
         <ThemeProvider>{children}</ThemeProvider>
+        <SyncManager />
       </body>
     </html>
   )

@@ -110,3 +110,99 @@ export async function createRegistration(data: CreateRegistrationInput) {
     return { success: false, error: 'Registration ပြုလုပ်ခြင်း မအောင်မြင်ပါ။' }
   }
 }
+
+/**
+ * Batch version of createRegistration for offline-sync flushing.
+ * Sends up to MAX_BATCH_SIZE records in one request/transaction so that
+ * an offline queue of N records costs N/MAX_BATCH_SIZE HTTP round-trips
+ * instead of N (800 sequential calls ≈ 40 min → 8 batch calls ≈ seconds).
+ *
+ * Idempotency: records whose syncId already exists on the server are
+ * treated as duplicates (skipped, counted). skipDuplicates additionally
+ * guards the (eventId, email) unique constraint.
+ */
+export async function createRegistrationsBatch(items: CreateRegistrationInput[]) {
+  // Upper bound per request to keep payloads small and rate limiting effective.
+  const MAX_BATCH_SIZE = 100
+  try {
+    if (!Array.isArray(items) || items.length === 0) {
+      return { success: false, error: 'Sync လုပ်ရန် Data များ မရှိပါ။' }
+    }
+    if (items.length > MAX_BATCH_SIZE) {
+      return { success: false, error: `Batch size ${items.length} exceeds the limit of ${MAX_BATCH_SIZE}.` }
+    }
+
+    const validatedItems = items.map((item) => createRegistrationSchema.parse(item))
+
+    // Resolve the target event once for items that don't specify one.
+    let resolvedEventId = validatedItems[0].eventId
+    if (!resolvedEventId) {
+      const latestEvent = await prisma.event.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      })
+      if (!latestEvent) {
+        return { success: false, error: 'လက်ရှိ စာရင်းသွင်းနိုင်သော Event မရှိသေးပါ။' }
+      }
+      resolvedEventId = latestEvent.id
+    } else {
+      const eventExists = await prisma.event.findUnique({
+        where: { id: resolvedEventId },
+        select: { id: true },
+      })
+      if (!eventExists) {
+        return { success: false, error: 'သက်ဆိုင်ရာ Event ကို ရှာမတွေ့ပါ။' }
+      }
+    }
+
+    // Idempotency check: skip records whose syncId is already persisted.
+    const syncIds = validatedItems
+      .map((item) => item.syncId)
+      .filter((s): s is string => Boolean(s))
+    const existingSyncIds = syncIds.length
+      ? await prisma.registration.findMany({
+          where: { syncId: { in: syncIds } },
+          select: { syncId: true },
+        })
+      : []
+    const existingSet = new Set(existingSyncIds.map((r) => r.syncId))
+
+    const toCreate = validatedItems
+      .filter((item) => !(item.syncId && existingSet.has(item.syncId)))
+      .map((item) => ({
+        eventId: item.eventId || resolvedEventId,
+        fullName: item.name,
+        email: item.email,
+        age: item.age,
+        phone: item.phone,
+        address: item.address,
+        isOfflineSynced: item.isOfflineSynced ?? false,
+        ...(item.syncId ? { syncId: item.syncId } : {}),
+      }))
+
+    let createdCount = 0
+    if (toCreate.length > 0) {
+      const result = await prisma.registration.createMany({
+        data: toCreate,
+        skipDuplicates: true,
+      })
+      createdCount = result.count
+    }
+
+    revalidatePath('/admin')
+    revalidatePath(`/events/${resolvedEventId}`)
+
+    return {
+      success: true,
+      total: validatedItems.length,
+      created: createdCount,
+      duplicates: validatedItems.length - createdCount,
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors[0]?.message || 'ဖြည့်သွင်းချက်များ မှားယွင်းနေပါသည်။' }
+    }
+    console.error('Batch Registration Error:', error)
+    return { success: false, error: 'Registration ပြုလုပ်ခြင်း မအောင်မြင်ပါ။' }
+  }
+}
