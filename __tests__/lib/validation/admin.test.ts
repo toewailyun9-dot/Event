@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { createEventSchema, toggleEventStatusSchema, deleteRegistrationSchema, getRegistrationsSchema, updateEventSchema, deleteEventSchema } from "@/lib/validation/admin"
+import { createEventSchema, toggleEventStatusSchema, deleteRegistrationSchema, getRegistrationsSchema, updateEventSchema, deleteEventSchema, sendEmailCampaignSchema, getEmailMessagesSchema } from "@/lib/validation/admin"
 
 describe("createEventSchema", () => {
   it("accepts valid event data", () => {
@@ -227,5 +227,64 @@ describe("getRegistrationsSchema", () => {
     if (result.success) {
       expect(result.data.page).toBe(3)
     }
+  })
+})
+
+describe("sendEmailCampaignSchema", () => {
+  const base = {
+    eventId: "evt_001",
+    subject: "နောက်လာမည့် Event အကြောင်း",
+    body: "ပါဝင်ရန် ဖိတ်ခေါ်ပါသည်။",
+  }
+
+  it("accepts valid campaign", () => {
+    const result = sendEmailCampaignSchema.safeParse(base)
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects missing eventId", () => {
+    const { eventId, ...rest } = base
+    expect(sendEmailCampaignSchema.safeParse(rest).success).toBe(false)
+  })
+
+  it("rejects empty subject", () => {
+    expect(sendEmailCampaignSchema.safeParse({ ...base, subject: "" }).success).toBe(false)
+  })
+
+  it("rejects empty body", () => {
+    expect(sendEmailCampaignSchema.safeParse({ ...base, body: "" }).success).toBe(false)
+  })
+
+  it("rejects subject over 200 chars", () => {
+    expect(sendEmailCampaignSchema.safeParse({ ...base, subject: "x".repeat(201) }).success).toBe(false)
+  })
+
+  it("rejects body over 10000 chars", () => {
+    expect(sendEmailCampaignSchema.safeParse({ ...base, body: "x".repeat(10001) }).success).toBe(false)
+  })
+})
+
+describe("getEmailMessagesSchema", () => {
+  it("applies defaults for empty params", () => {
+    const result = getEmailMessagesSchema.safeParse({})
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.page).toBe(1)
+      expect(result.data.pageSize).toBe(50)
+    }
+  })
+
+  it("accepts a valid status", () => {
+    expect(getEmailMessagesSchema.safeParse({ status: "PENDING" }).success).toBe(true)
+    expect(getEmailMessagesSchema.safeParse({ status: "SENT" }).success).toBe(true)
+    expect(getEmailMessagesSchema.safeParse({ status: "FAILED" }).success).toBe(true)
+  })
+
+  it("rejects an invalid status", () => {
+    expect(getEmailMessagesSchema.safeParse({ status: "SENDING" }).success).toBe(false)
+  })
+
+  it("rejects pageSize over 500", () => {
+    expect(getEmailMessagesSchema.safeParse({ pageSize: 1000 }).success).toBe(false)
   })
 })

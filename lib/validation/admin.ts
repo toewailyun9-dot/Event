@@ -47,3 +47,16 @@ export const getRegistrationsSchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
 });
+
+export const sendEmailCampaignSchema = z.object({
+  eventId: z.string().min(1),
+  subject: z.string().min(1, "Subject ထည့်သွင်းရန် လိုအပ်ပါသည်။").max(200),
+  body: z.string().min(1, "Message ထည့်သွင်းရန် လိုအပ်ပါသည်။").max(10000),
+});
+
+export const getEmailMessagesSchema = z.object({
+  eventId: z.string().optional(),
+  status: z.enum(["PENDING", "SENT", "FAILED"]).optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(500).optional().default(50),
+});

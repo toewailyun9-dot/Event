@@ -32,6 +32,7 @@ model Event {
 
   // 1-to-Many Relationship
   registrations Registration[]
+  emailMessages EmailMessage[]
 
   @@index([slug])
   @@index([isActive])
@@ -67,4 +68,46 @@ model Registration {
   @@index([syncId])
   // DB-level unique constraint: prevents same email for same event
   @@unique([eventId, email])
+}
+
+// ၃။ Email Messaging (Outbox pattern)
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// One row per recipient — the outbox that the cron worker drains.
+model EmailMessage {
+  id         String      @id @default(cuid())
+  eventId    String?
+  event      Event?      @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  // Snapshot of the event at send time — used to personalize {eventTitle}
+  // and {eventDate} even if the event is later deleted.
+  eventTitle String?
+  eventDate  DateTime?
+  to         String
+  name       String?
+  subject    String
+  body       String
+  status     EmailStatus @default(PENDING)
+  attempts   Int         @default(0)
+  lastError  String?
+  sentAt     DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([status])
+  @@index([eventId])
+  @@index([to])
+  @@index([createdAt])
+}
+
+// Emails that opted out — never send to these again.
+model UnsubscribedEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([email])
 }

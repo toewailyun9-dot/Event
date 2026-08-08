@@ -8,7 +8,7 @@ import {
   Calendar, 
   MapPin, 
   Users, 
-  Copy, 
+
   ExternalLink
 } from "lucide-react";
 import ExportCSVButton from "@/components/admin/exportCSVButton";

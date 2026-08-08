@@ -17,6 +17,7 @@ import {
   ChevronRight,
   X,
   CalendarRange,
+  Mail,
 } from 'lucide-react'
 
 import CreateEventButton from '@/components/admin/createEventButton'
@@ -176,6 +177,14 @@ export default function AdminDashboard() {
             >
               <Calendar className="w-4 h-4" />
               <span>Events</span>
+            </Link>
+
+            <Link
+              href="/admin/emails"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Emails</span>
             </Link>
 
             <CreateEventButton />
