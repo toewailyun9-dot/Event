@@ -4,6 +4,7 @@ import EventCardActions from '@/components/admin/eventCardActions'
 import CreateEventButton from '@/components/admin/createEventButton'
 import EditEventButton from '@/components/admin/editEventButton'
 import DeleteEventButton from '@/components/admin/deleteEventButton'
+import EventInviteIcons from '@/components/admin/eventInviteIcons'
 
 export const revalidate = 0 // Data အမြဲတမ်း Fresh ဖြစ်နေစေရန်
 
@@ -108,8 +109,15 @@ export default async function AdminEventsPage() {
                     <p className="flex items-center gap-1.5">
                       <span>🔗</span>
                       <code className="text-zinc-700 dark:text-zinc-300 font-mono">
-                        /events/{event.slug}
+                        /events/{event.id}
                       </code>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span>💬</span>
+                      <EventInviteIcons
+                        telegramLink={event.telegramLink}
+                        viberLink={event.viberLink}
+                      />
                     </p>
                   </div>
                 </div>
@@ -141,6 +149,8 @@ export default async function AdminEventsPage() {
                         slug: event.slug,
                         eventDate: event.eventDate.toISOString(),
                         location: event.location,
+                        telegramLink: event.telegramLink,
+                        viberLink: event.viberLink,
                       }}
                     />
                     <DeleteEventButton

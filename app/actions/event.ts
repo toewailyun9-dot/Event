@@ -11,6 +11,8 @@ export async function createEvent(data: {
   slug: string
   eventDate: Date
   location?: string
+  telegramLink?: string
+  viberLink?: string
 }) {
   try {
     const auth = await requireAuth()
@@ -24,6 +26,8 @@ export async function createEvent(data: {
         slug: validated.slug,
         eventDate: validated.eventDate,
         location: validated.location,
+        telegramLink: validated.telegramLink || null,
+        viberLink: validated.viberLink || null,
       },
     })
 
@@ -68,6 +72,8 @@ export async function updateEvent(
     slug: string
     eventDate: Date
     location?: string
+    telegramLink?: string
+    viberLink?: string
   }
 ) {
   try {
@@ -83,6 +89,8 @@ export async function updateEvent(
         slug: validated.slug,
         eventDate: validated.eventDate,
         location: validated.location,
+        telegramLink: validated.telegramLink || null,
+        viberLink: validated.viberLink || null,
       },
     })
 

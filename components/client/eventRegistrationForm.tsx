@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { createRegistration } from "@/app/actions/registration";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEffect, useState } from "react";
@@ -11,7 +12,10 @@ import { requestOfflineSync, warnIfPendingQueueLarge } from "@/lib/sync";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 
-
+interface ActionResult {
+  success: boolean;
+  error?: string;
+}
 
 interface ActiveEvent {
   id: string;
@@ -19,6 +23,8 @@ interface ActiveEvent {
   description?: string | null;
   eventDate: Date | string;
   location?: string | null;
+  telegramLink?: string | null;
+  viberLink?: string | null;
 }
 
 interface EventRegistrationFormProps {
@@ -34,8 +40,8 @@ const formSchema = z.object({
   }),
   age: z.coerce
     .number({ invalid_type_error: "အသက်ကို ကိန်းဂဏန်းသာ ထည့်ပါ" })
-    .min(10, { message: "အသက်သည် အနည်းဆုံး 10 နှစ် ဖြစ်ရပါမည်။" })
-    .max(120, { message: "မှန်ကန်သော အသက်ကို ထည့်သွင်းပါ။" }),
+    .min(15, { message: "အသက်သည် အနည်းဆုံး 15 နှစ် ဖြစ်ရပါမည်။" })
+    .max(80, { message: "မှန်ကန်သော အသက်ကို ထည့်သွင်းပါ။" }),
   phone: z.string().min(8, {
     message: "မှန်ကန်သော ဖုန်းနံပါတ် ထည့်သွင်းပါ။",
   }),
@@ -47,6 +53,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function EventRegistrationForm({ event: initialEvent }: EventRegistrationFormProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(initialEvent ?? null);
   const [eventLoading, setEventLoading] = useState(!initialEvent);
@@ -63,6 +70,25 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
 
   const isOnline = useOnlineStatus();
 
+  // Registration အောင်မြင်ပါက success page သို့ ပို့ဆောင်ရန်။
+  // Event အချက်အလက်များကို sessionStorage တွင် ထည့်ထားပြီး
+  // success page က offline ဖြစ်နေသော်လည်း Invite Link များ ပြသနိုင်သည်။
+  const goToSuccess = () => {
+    try {
+      sessionStorage.setItem(
+        "registration-success",
+        JSON.stringify({
+          eventTitle: activeEvent?.title ?? null,
+          telegramLink: activeEvent?.telegramLink ?? null,
+          viberLink: activeEvent?.viberLink ?? null,
+        })
+      );
+    } catch {
+      // sessionStorage မရနိုင်ပါက success page သည် generic state ကိုသာ ပြမည်။
+    }
+    router.replace("/success");
+  };
+
   useEffect(() => {
     if (isOnline) {
       requestOfflineSync();
@@ -72,7 +98,6 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
  useEffect(() => {
   if (initialEvent) return;
 
-  
   if (!isOnline) {
     const timer = setTimeout(() => setEventLoading(false), 0);
     return () => clearTimeout(timer);
@@ -123,7 +148,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
           const registration = (await Promise.race([
             navigator.serviceWorker.ready,
             swTimeout,
-          ])) as any;
+          ])) as  ServiceWorkerRegistration;
 
           await registration.sync.register("sync-registrations");
         } catch (err) {
@@ -132,6 +157,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
       }
 
       reset();
+      goToSuccess();
     } catch (dbError) {
       console.error("Dexie Save Error:", dbError);
       toast.error("Local Storage သို့ သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်နေပါသည်။");
@@ -156,11 +182,12 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
       const result = (await Promise.race([
         createRegistration({ ...data, eventId: activeEvent?.id }),
         timeoutPromise,
-      ])) as any;
+      ])) as ActionResult ;
 
       if (result.success) {
         toast.success("Registration အောင်မြင်ပါသည်။");
         reset();
+        goToSuccess();
       } else {
         toast.error(result.error || "မှားယွင်းနေပါသည်။");
       }

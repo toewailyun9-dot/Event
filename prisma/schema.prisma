@@ -26,6 +26,10 @@ model Event {
   description   String?
   eventDate     DateTime
   location      String?
+  // Event အတွက် Telegram / Viber Group Invite Link များ
+  // (Registration အောင်မြင်သည့် success page တွင် ပြသရန်)
+  telegramLink  String?
+  viberLink     String?
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt

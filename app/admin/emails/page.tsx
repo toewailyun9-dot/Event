@@ -69,6 +69,9 @@ export default function AdminEmailsPage() {
   }, [])
 
   const fetchMessages = useCallback(async () => {
+    // setState ကို effect အတွင်း synchronously မခေါ်မိစေရန်
+    // microtask ဖြင့် ရွှေ့ထားသည်။
+    await Promise.resolve()
     setLoadingMessages(true)
     try {
       const result = await getEmailMessages({
@@ -93,9 +96,13 @@ export default function AdminEmailsPage() {
     fetchEvents()
   }, [fetchEvents])
 
-  useEffect(() => {
+  // Filter ပြောင်းသည့်အခါ page ကို 1 သို့ ပြန်လည်သတ်မှတ်ရန်
+  // (Render အတွင်း state ပြင်ဆင်ခြင်း — React ၏ ထောက်ခံထားသော ပုံစံ)
+  const [prevStatusFilter, setPrevStatusFilter] = useState(statusFilter)
+  if (prevStatusFilter !== statusFilter) {
+    setPrevStatusFilter(statusFilter)
     setPage(1)
-  }, [statusFilter])
+  }
 
   useEffect(() => {
     fetchMessages()
@@ -326,7 +333,7 @@ export default function AdminEmailsPage() {
                           <div className="font-medium text-white">{msg.to}</div>
                           <div className="text-zinc-500 text-[11px]">{msg.event?.title ?? '—'}</div>
                         </td>
-                        <td className="py-4 px-5 max-w-[220px] truncate text-zinc-400">
+                        <td className="py-4 px-5 max-w-55 truncate text-zinc-400">
                           {msg.subject}
                         </td>
                         <td className="py-4 px-5">
@@ -337,7 +344,7 @@ export default function AdminEmailsPage() {
                             )}
                           </span>
                           {msg.status === 'FAILED' && msg.lastError && (
-                            <div className="text-[10px] text-zinc-500 mt-0.5 max-w-[180px] truncate">
+                            <div className="text-[10px] text-zinc-500 mt-0.5 max-w-45 truncate">
                               {msg.lastError}
                             </div>
                           )}

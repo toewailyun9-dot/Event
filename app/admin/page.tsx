@@ -16,7 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  CalendarRange,
+
   Mail,
 } from 'lucide-react'
 
@@ -65,6 +65,9 @@ export default function AdminDashboard() {
   }, [])
 
   const fetchData = useCallback(async (searchVal: string, pageNum: number, filters?: { eventId?: string; dateFrom?: string; dateTo?: string }) => {
+    // setState ကို effect အတွင်း synchronously မခေါ်မိစေရန်
+    // microtask ဖြင့် ရွှေ့ထားသည်။
+    await Promise.resolve()
     setLoading(true)
     try {
       const result = await getRegistrations({
@@ -88,9 +91,13 @@ export default function AdminDashboard() {
     }
   }, [])
 
-  useEffect(() => {
+  // Search ပြောင်းသည့်အခါ page ကို 1 သို့ ပြန်လည်သတ်မှတ်ရန်
+  // (Render အတွင်း state ပြင်ဆင်ခြင်း — React ၏ ထောက်ခံထားသော ပုံစံ)
+  const [prevSearch, setPrevSearch] = useState(debouncedSearch)
+  if (prevSearch !== debouncedSearch) {
+    setPrevSearch(debouncedSearch)
     setPage(1)
-  }, [debouncedSearch])
+  }
 
   useEffect(() => {
     fetchData(debouncedSearch, page, {
@@ -318,7 +325,7 @@ export default function AdminDashboard() {
                   type="date"
                   value={filterDateFrom}
                   onChange={(e) => { setFilterDateFrom(e.target.value); setPage(1) }}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition [color-scheme:dark]"
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition scheme-dark"
                 />
               </div>
 
@@ -329,7 +336,7 @@ export default function AdminDashboard() {
                   type="date"
                   value={filterDateTo}
                   onChange={(e) => { setFilterDateTo(e.target.value); setPage(1) }}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition [color-scheme:dark]"
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition scheme-dark"
                 />
               </div>
             </div>
@@ -411,7 +418,7 @@ export default function AdminDashboard() {
                         {item.address}
                       </td>
                       <td className="py-4 px-5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs max-w-[180px] truncate">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs max-w-45 truncate">
                           {item.event?.title ?? '—'}
                         </span>
                       </td>

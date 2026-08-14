@@ -54,7 +54,7 @@ async function syncDataWithServer() {
       const chunk = pendingList.slice(i, i + SYNC_BATCH_SIZE);
       const payload = chunk.map((item) => {
         // Only send the necessary fields — exclude Dexie internal fields
-        const { id, synced, createdAt, ...cleanPayload } = item;
+        const {  ...cleanPayload } = item;
         return cleanPayload;
       });
 

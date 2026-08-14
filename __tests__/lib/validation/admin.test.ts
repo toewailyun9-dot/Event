@@ -111,6 +111,64 @@ describe("createEventSchema", () => {
   })
 })
 
+describe("createEventSchema invite links", () => {
+  const base = {
+    title: "Tech Conference 2026",
+    slug: "tech-conf-2026",
+    eventDate: "2026-12-01T09:00:00Z",
+  }
+
+  it("accepts a valid https telegram link", () => {
+    const result = createEventSchema.safeParse({
+      ...base,
+      telegramLink: "https://t.me/techconf2026",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts a valid viber invite link", () => {
+    const result = createEventSchema.safeParse({
+      ...base,
+      viberLink: "https://invite.viber.com/?g2=abc123",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts a viber:// app scheme link", () => {
+    const result = createEventSchema.safeParse({
+      ...base,
+      viberLink: "viber://pa?chatURI=techconf",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts an empty string link (not configured)", () => {
+    const result = createEventSchema.safeParse({
+      ...base,
+      telegramLink: "",
+      viberLink: "",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects a link without a valid scheme", () => {
+    const result = createEventSchema.safeParse({
+      ...base,
+      telegramLink: "not a url",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("accepts both links at once", () => {
+    const result = createEventSchema.safeParse({
+      ...base,
+      telegramLink: "https://t.me/techconf2026",
+      viberLink: "viber://pa?chatURI=techconf",
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
 describe("toggleEventStatusSchema", () => {
   it("accepts valid data", () => {
     const result = toggleEventStatusSchema.safeParse({ id: "evt_001", currentStatus: true })

@@ -34,6 +34,9 @@ export default function EventRegistrationsTable({ eventId }: { eventId: string }
   const debouncedSearch = useDebounce(search, 300)
 
   const fetchData = useCallback(async () => {
+    // setState ကို effect အတွင်း synchronously မခေါ်မိစေရန်
+    // microtask ဖြင့် ရွှေ့ထားသည်။
+    await Promise.resolve()
     setLoading(true)
     try {
       const result = await getRegistrations({
@@ -55,10 +58,13 @@ export default function EventRegistrationsTable({ eventId }: { eventId: string }
     }
   }, [eventId, debouncedSearch, page])
 
-  // Reset to the first page whenever the search text changes.
-  useEffect(() => {
+  // Search ပြောင်းသည့်အခါ page ကို 1 သို့ ပြန်လည်သတ်မှတ်ရန်
+  // (Render အတွင်း state ပြင်ဆင်ခြင်း — React ၏ ထောက်ခံထားသော ပုံစံ)
+  const [prevSearch, setPrevSearch] = useState(debouncedSearch)
+  if (prevSearch !== debouncedSearch) {
+    setPrevSearch(debouncedSearch)
     setPage(1)
-  }, [debouncedSearch])
+  }
 
   useEffect(() => {
     fetchData()

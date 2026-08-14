@@ -12,6 +12,8 @@ export async function GET() {
         description: true,
         eventDate: true,
         location: true,
+        telegramLink: true,
+        viberLink: true,
       },
     });
 

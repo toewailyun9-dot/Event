@@ -12,6 +12,8 @@ export type EventData = {
   slug: string
   eventDate: string
   location: string | null
+  telegramLink: string | null
+  viberLink: string | null
 }
 
 interface EditEventFormProps {
@@ -32,6 +34,8 @@ export default function EditEventForm({ event, onClose }: EditEventFormProps) {
   const [slug, setSlug] = useState(event.slug)
   const [eventDate, setEventDate] = useState(toLocalInputValue(new Date(event.eventDate)))
   const [location, setLocation] = useState(event.location ?? '')
+  const [telegramLink, setTelegramLink] = useState(event.telegramLink ?? '')
+  const [viberLink, setViberLink] = useState(event.viberLink ?? '')
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value
@@ -54,6 +58,8 @@ export default function EditEventForm({ event, onClose }: EditEventFormProps) {
         slug,
         eventDate: new Date(eventDate),
         location,
+        telegramLink,
+        viberLink,
       })
 
       if (result.success) {
@@ -157,6 +163,43 @@ export default function EditEventForm({ event, onClose }: EditEventFormProps) {
               placeholder="Novotel Yangon Max"
               className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-indigo-500 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
             />
+          </div>
+        </div>
+
+        {/* Telegram and Viber Invite Links */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="telegramLink" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Telegram Group Link
+            </label>
+            <input
+              id="telegramLink"
+              type="url"
+              value={telegramLink}
+              onChange={(e) => setTelegramLink(e.target.value)}
+              placeholder="https://t.me/yourgroup"
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-indigo-500 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+            />
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+              Registration အောင်မြင်သည့်စာမျက်နှာတွင် ပြသမည်။ မဖြည့်လိုပါက ချန်ထားနိုင်သည်။
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="viberLink" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Viber Group Link
+            </label>
+            <input
+              id="viberLink"
+              type="url"
+              value={viberLink}
+              onChange={(e) => setViberLink(e.target.value)}
+              placeholder="https://invite.viber.com/..."
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-indigo-500 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+            />
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+              Registration အောင်မြင်သည့်စာမျက်နှာတွင် ပြသမည်။ မဖြည့်လိုပါက ချန်ထားနိုင်သည်။
+            </p>
           </div>
         </div>
 
