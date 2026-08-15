@@ -122,6 +122,7 @@ export async function sendEmailCampaign(input: z.infer<typeof sendEmailCampaignS
 }
 
 export async function getEmailMessages(params?: {
+  search?: string
   eventId?: string
   status?: string
   page?: number
@@ -135,6 +136,16 @@ export async function getEmailMessages(params?: {
     const where: Record<string, unknown> = {}
     if (parsed.eventId) where.eventId = parsed.eventId
     if (parsed.status) where.status = parsed.status
+    if (parsed.search) {
+      const search = parsed.search.trim()
+      if (search) {
+        where.OR = [
+          { to: { contains: search, mode: 'insensitive' as const } },
+          { subject: { contains: search, mode: 'insensitive' as const } },
+          { name: { contains: search, mode: 'insensitive' as const } },
+        ]
+      }
+    }
 
     const skip = (parsed.page - 1) * parsed.pageSize
 

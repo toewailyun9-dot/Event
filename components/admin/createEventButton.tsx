@@ -35,7 +35,7 @@ export default function CreateEventButton() {
           />
 
           {/* Modal Content Box */}
-          <div className="relative z-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="relative z-10 bg-card border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <CreateEventForm onClose={() => setIsModalOpen(false)} />
           </div>
 

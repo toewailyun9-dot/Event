@@ -200,8 +200,8 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 p-4">
-      <div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md mx-auto p-6 bg-card rounded-xl shadow-lg border border-border space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-medium w-fit ${
@@ -219,7 +219,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
         </div>
 
         {activeEvent ? (
-          <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/80 space-y-2.5">
+          <div className="p-4 bg-muted rounded-xl border border-border space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -228,17 +228,17 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
             </div>
 
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-snug">
+              <h2 className="text-lg font-bold text-foreground leading-snug">
                 {activeEvent.title}
               </h2>
               {activeEvent.description && (
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 line-clamp-2">
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                   {activeEvent.description}
                 </p>
               )}
             </div>
 
-            <div className="pt-2.5 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-zinc-600 dark:text-zinc-400 border-t border-zinc-200/80 dark:border-zinc-700/60 font-medium">
+            <div className="pt-2.5 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground border-t border-border font-medium">
               <div className="flex items-center gap-1.5">
                 <span>📅</span>
                 <span>
@@ -268,17 +268,17 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
         ) : null}
 
         <div>
-          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+          <h3 className="text-base font-bold text-foreground">
             Registration Form
           </h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Event တက်ရောက်ရန် အောက်ပါ အချက်အလက်များကို ဖြည့်သွင်းပါ။
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Name
             </label>
             <input
@@ -286,7 +286,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
               placeholder="မောင်မောင်"
               disabled={loading}
               {...register("name")}
-              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-foreground border-input text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
             />
             {errors.name && (
               <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>
@@ -294,7 +294,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Email
             </label>
             <input
@@ -302,7 +302,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
               placeholder="example@gmail.com"
               disabled={loading}
               {...register("email")}
-              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-foreground border-input text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
             />
             {errors.email && (
               <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
@@ -311,7 +311,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Age
               </label>
               <input
@@ -319,7 +319,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
                 placeholder="25"
                 disabled={loading}
                 {...register("age")}
-                className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-foreground border-input text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {errors.age && (
                 <p className="text-xs text-red-500 mt-1">{errors.age.message}</p>
@@ -327,7 +327,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Phone
               </label>
               <input
@@ -335,7 +335,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
                 placeholder="09xxxxxxxxx"
                 disabled={loading}
                 {...register("phone")}
-                className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-foreground border-input text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {errors.phone && (
                 <p className="text-xs text-red-500 mt-1">
@@ -346,7 +346,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Address
             </label>
             <textarea
@@ -354,7 +354,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
               placeholder="ရန်ကုန်မြို့၊ ..."
               disabled={loading}
               {...register("address")}
-              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none transition focus:ring-2 focus:ring-foreground border-input text-foreground resize-none disabled:opacity-50 disabled:cursor-not-allowed"
             />
             {errors.address && (
               <p className="text-xs text-red-500 mt-1">
@@ -366,7 +366,7 @@ export default function EventRegistrationForm({ event: initialEvent }: EventRegi
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-medium rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>

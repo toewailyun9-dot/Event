@@ -30,7 +30,6 @@ const inviteLink = z
 
 export const createEventSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
-  slug: z.string().min(1, "Slug is required").max(200).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
   eventDate: eventDateSchema,
   location: z.string().max(500).optional(),
   telegramLink: inviteLink,
@@ -45,7 +44,6 @@ export const toggleEventStatusSchema = z.object({
 export const updateEventSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1, "Title is required").max(200),
-  slug: z.string().min(1, "Slug is required").max(200).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
   eventDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)),
   location: z.string().max(500).optional(),
   telegramLink: inviteLink,
@@ -76,8 +74,65 @@ export const sendEmailCampaignSchema = z.object({
 });
 
 export const getEmailMessagesSchema = z.object({
+  search: z.string().max(200).optional(),
   eventId: z.string().optional(),
   status: z.enum(["PENDING", "SENT", "FAILED"]).optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(500).optional().default(50),
+});
+
+export const getSponsorsSchema = z.object({
+  search: z.string().max(200).optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(500).optional().default(50),
+});
+
+export const getEventsSchema = z.object({
+  search: z.string().max(200).optional(),
+  status: z.enum(["ALL", "ACTIVE", "CLOSED"]).optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(500).optional().default(50),
+});
+
+const optionalUrl = z
+  .union([z.literal(""), z.string().trim().max(500).url("မှန်ကန်သော URL ထည့်သွင်းပါ။")])
+  .optional();
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .transform((v) => (v ? v : undefined));
+
+export const createSponsorSchema = z.object({
+  name: z.string().trim().min(1, "Sponsor အမည် ထည့်သွင်းရန် လိုအပ်ပါသည်။").max(200),
+  website: optionalUrl,
+  description: optionalText(1000),
+  contactEmail: optionalText(200),
+  contactName: optionalText(200),
+  contactPhone: optionalText(100),
+});
+
+export const updateSponsorSchema = createSponsorSchema.extend({
+  id: z.string().min(1),
+});
+
+export const deleteSponsorSchema = z.object({
+  id: z.string().min(1),
+});
+
+export const createEventSponsorSchema = z.object({
+  eventId: z.string().min(1),
+  sponsorId: z.string().min(1),
+  amount: z
+    .union([z.literal(""), z.coerce.number().nonnegative()])
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
+});
+
+export const deleteEventSponsorSchema = z.object({
+  eventId: z.string().min(1),
+  sponsorId: z.string().min(1),
 });

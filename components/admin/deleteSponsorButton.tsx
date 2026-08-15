@@ -3,16 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { deleteEvent } from '@/app/actions/event'
+import { deleteSponsor } from '@/app/actions/sponsor'
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react'
 
 type Props = {
   id: string
-  title: string
-  registrationCount?: number
+  name: string
+  eventCount?: number
 }
 
-export default function DeleteEventButton({ id, title, registrationCount = 0 }: Props) {
+export default function DeleteSponsorButton({ id, name, eventCount = 0 }: Props) {
   const router = useRouter()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -20,12 +20,12 @@ export default function DeleteEventButton({ id, title, registrationCount = 0 }: 
   const handleDelete = async () => {
     setLoading(true)
     try {
-      const result = await deleteEvent(id)
+      const result = await deleteSponsor(id)
       if (result.success) {
-        toast.success('Event ဖျက်လိုက်ပါပြီ။')
+        toast.success('Sponsor ဖျက်လိုက်ပါပြီ။')
         setConfirmOpen(false)
         router.refresh()
-        window.dispatchEvent(new CustomEvent('events-changed'))
+        window.dispatchEvent(new CustomEvent('sponsors-changed'))
       } else {
         toast.error(result.error || 'ဖျက်၍ မရပါ။')
       }
@@ -48,27 +48,26 @@ export default function DeleteEventButton({ id, title, registrationCount = 0 }: 
 
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div
-            className="fixed inset-0"
-            onClick={() => !loading && setConfirmOpen(false)}
-          />
+          <div className="fixed inset-0" onClick={() => !loading && setConfirmOpen(false)} />
           <div className="relative z-10 bg-card border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="p-6">
-              <div className="flex items-start gap-3">
+              <div className="flex justify-between gap-3">
                 <div className="p-2 rounded-full bg-red-500/10 text-red-500 shrink-0">
                   <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-foreground">
-                    Delete Event?
+                    Delete Sponsor?
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    <span className="font-medium text-foreground">{title}</span> ကို ဖျက်မှာသေချာပါသလား?
+                    <span className="font-medium text-foreground">{name}</span>{' '}
+                    ကို ဖျက်မှာသေချာပါသလား?
                   </p>
-                  {registrationCount > 0 && (
+                  {eventCount > 0 && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
-                      
-                      ဤ Event အောက်ရှိ Registrations ({registrationCount}) ခုပါ တစ်ပါတည်း ဖျက်ပစ်မည်။ ပြန်ပြောင်း၍ မရပါ။
+                    
+                      ဤ Sponsor နှင့် ချိတ်ဆက်ထားသော EventSponsor ({eventCount}) ခုပါ
+                      တစ်ပါတည်း ဖျက်ပစ်မည်။ ပြန်ပြောင်း၍ မရပါ။
                     </p>
                   )}
                 </div>
@@ -96,7 +95,7 @@ export default function DeleteEventButton({ id, title, registrationCount = 0 }: 
                     <span>Deleting...</span>
                   </>
                 ) : (
-                  'Delete Event'
+                  'Delete Sponsor'
                 )}
               </button>
             </div>

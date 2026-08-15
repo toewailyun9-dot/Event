@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import EventRegistrationForm from "@/components/client/eventRegistrationForm";
 import WelcomeScreen from "@/components/client/welcomeScreen";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Page() {
   const event = await prisma.event.findFirst({

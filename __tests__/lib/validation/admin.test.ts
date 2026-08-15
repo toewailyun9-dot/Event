@@ -5,7 +5,6 @@ describe("createEventSchema", () => {
   it("accepts valid event data", () => {
     const result = createEventSchema.safeParse({
       title: "Tech Conference 2026",
-      slug: "tech-conf-2026",
       eventDate: "2026-12-01T09:00:00Z",
       location: "Yangon",
     })
@@ -15,7 +14,6 @@ describe("createEventSchema", () => {
   it("accepts event without location", () => {
     const result = createEventSchema.safeParse({
       title: "Workshop",
-      slug: "workshop",
       eventDate: "2026-12-01T09:00:00Z",
     })
     expect(result.success).toBe(true)
@@ -24,25 +22,6 @@ describe("createEventSchema", () => {
   it("rejects empty title", () => {
     const result = createEventSchema.safeParse({
       title: "",
-      slug: "workshop",
-      eventDate: "2026-12-01T09:00:00Z",
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it("rejects invalid slug (uppercase)", () => {
-    const result = createEventSchema.safeParse({
-      title: "Workshop",
-      slug: "WORKSHOP",
-      eventDate: "2026-12-01T09:00:00Z",
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it("rejects invalid slug (spaces)", () => {
-    const result = createEventSchema.safeParse({
-      title: "Workshop",
-      slug: "my workshop",
       eventDate: "2026-12-01T09:00:00Z",
     })
     expect(result.success).toBe(false)
@@ -51,7 +30,6 @@ describe("createEventSchema", () => {
   it("transforms eventDate string to Date", () => {
     const result = createEventSchema.safeParse({
       title: "Workshop",
-      slug: "workshop",
       eventDate: "2026-12-01T09:00:00Z",
     })
     expect(result.success).toBe(true)
@@ -63,7 +41,6 @@ describe("createEventSchema", () => {
   it("accepts eventDate as Date object (server action serialization)", () => {
     const result = createEventSchema.safeParse({
       title: "Workshop",
-      slug: "workshop",
       eventDate: new Date("2026-12-01T09:00:00Z"),
     })
     expect(result.success).toBe(true)
@@ -76,7 +53,6 @@ describe("createEventSchema", () => {
     const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const result = createEventSchema.safeParse({
       title: "Workshop",
-      slug: "workshop",
       eventDate: past,
     })
     expect(result.success).toBe(false)
@@ -85,7 +61,6 @@ describe("createEventSchema", () => {
   it("rejects eventDate in the past (Date object)", () => {
     const result = createEventSchema.safeParse({
       title: "Workshop",
-      slug: "workshop",
       eventDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
     })
     expect(result.success).toBe(false)
@@ -95,7 +70,6 @@ describe("createEventSchema", () => {
     const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     const result = createEventSchema.safeParse({
       title: "Workshop",
-      slug: "workshop",
       eventDate: future,
     })
     expect(result.success).toBe(true)
@@ -104,7 +78,6 @@ describe("createEventSchema", () => {
   it("rejects an invalid eventDate string", () => {
     const result = createEventSchema.safeParse({
       title: "Workshop",
-      slug: "workshop",
       eventDate: "not-a-date",
     })
     expect(result.success).toBe(false)
@@ -114,7 +87,6 @@ describe("createEventSchema", () => {
 describe("createEventSchema invite links", () => {
   const base = {
     title: "Tech Conference 2026",
-    slug: "tech-conf-2026",
     eventDate: "2026-12-01T09:00:00Z",
   }
 
@@ -202,7 +174,6 @@ describe("updateEventSchema", () => {
   const base = {
     id: "evt_001",
     title: "Tech Conference 2026",
-    slug: "tech-conf-2026",
     eventDate: "2026-12-01T09:00:00Z",
     location: "Yangon",
   }
@@ -228,11 +199,6 @@ describe("updateEventSchema", () => {
 
   it("rejects empty title", () => {
     const result = updateEventSchema.safeParse({ ...base, title: "" })
-    expect(result.success).toBe(false)
-  })
-
-  it("rejects invalid slug", () => {
-    const result = updateEventSchema.safeParse({ ...base, slug: "Invalid Slug" })
     expect(result.success).toBe(false)
   })
 })

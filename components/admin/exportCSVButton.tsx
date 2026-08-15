@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Download } from 'lucide-react'
-import { exportEventCSV } from '@/app/actions/admin'
 
 type Props = {
   eventId: string
@@ -16,17 +15,30 @@ export default function ExportCSVButton({ eventId, label = 'Export CSV' }: Props
   const handleExport = async () => {
     setLoading(true)
     try {
-      const result = await exportEventCSV(eventId)
-      if (!result.success) {
-        toast.error(result.error || 'CSV Export မအောင်မြင်ပါ။')
+      const response = await fetch(`/api/events/${eventId}/export`, {
+        method: 'GET',
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Login ပြန်လုပ်ပြီး ထပ်ကြိုးစားပါ။')
+        } else if (response.status === 404) {
+          toast.error('Event မတွေ့ပါ။')
+        } else {
+          toast.error('CSV Export မအောင်မြင်ပါ။')
+        }
         return
       }
 
-      const blob = new Blob([result.csv], { type: 'text/csv' })
+      const disposition = response.headers.get('content-disposition')
+      const match = disposition?.match(/filename="?([^"]+)"?/)
+      const filename = match?.[1] ?? `registrations-${new Date().toISOString().slice(0, 10)}.csv`
+
+      const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = result.filename
+      a.download = filename
       a.click()
       window.URL.revokeObjectURL(url)
       toast.success('CSV File Download စတင်ပါပြီ။')

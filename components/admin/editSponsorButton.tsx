@@ -3,14 +3,14 @@
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import type { EventData } from './editEventForm'
+import type { SponsorFormData } from './sponsorForm'
 
-const EditEventForm = dynamic(() => import('./editEventForm'), {
+const SponsorForm = dynamic(() => import('./sponsorForm'), {
   ssr: false,
   loading: () => null,
 })
 
-export default function EditEventButton({ event }: { event: EventData }) {
+export default function EditSponsorButton({ sponsor }: { sponsor: SponsorFormData }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
@@ -25,12 +25,9 @@ export default function EditEventButton({ event }: { event: EventData }) {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
-          <div
-            className="fixed inset-0"
-            onClick={() => setIsModalOpen(false)}
-          />
+          <div className="fixed inset-0" onClick={() => setIsModalOpen(false)} />
           <div className="relative z-10 bg-card border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <EditEventForm event={event} onClose={() => setIsModalOpen(false)} />
+            <SponsorForm sponsor={sponsor} onClose={() => setIsModalOpen(false)} />
           </div>
         </div>
       )}

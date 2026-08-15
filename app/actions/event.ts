@@ -8,7 +8,6 @@ import { createEventSchema, toggleEventStatusSchema, updateEventSchema, deleteEv
 
 export async function createEvent(data: {
   title: string
-  slug: string
   eventDate: Date
   location?: string
   telegramLink?: string
@@ -23,7 +22,6 @@ export async function createEvent(data: {
     const newEvent = await prisma.event.create({
       data: {
         title: validated.title,
-        slug: validated.slug,
         eventDate: validated.eventDate,
         location: validated.location,
         telegramLink: validated.telegramLink || null,
@@ -32,6 +30,7 @@ export async function createEvent(data: {
     })
 
     revalidatePath('/admin/events')
+    revalidatePath('/')
     return { success: true, data: newEvent }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -58,6 +57,8 @@ export async function toggleEventStatus(id: string, currentStatus: boolean) {
     })
 
     revalidatePath('/admin/events')
+    revalidatePath('/')
+    revalidatePath(`/events/${validated.id}`)
     return { success: true }
   } catch (error) {
     console.error('Toggle status error:', error)
@@ -69,7 +70,6 @@ export async function updateEvent(
   id: string,
   data: {
     title: string
-    slug: string
     eventDate: Date
     location?: string
     telegramLink?: string
@@ -86,7 +86,6 @@ export async function updateEvent(
       where: { id: validated.id },
       data: {
         title: validated.title,
-        slug: validated.slug,
         eventDate: validated.eventDate,
         location: validated.location,
         telegramLink: validated.telegramLink || null,
@@ -96,6 +95,8 @@ export async function updateEvent(
 
     revalidatePath('/admin/events')
     revalidatePath(`/admin/events/${validated.id}`)
+    revalidatePath('/')
+    revalidatePath(`/events/${validated.id}`)
     return { success: true }
   } catch (error) {
     console.error('Update Event Error:', error)
@@ -115,6 +116,7 @@ export async function deleteEvent(id: string) {
     })
 
     revalidatePath('/admin/events')
+    revalidatePath('/')
     return { success: true }
   } catch (error) {
     console.error('Delete Event Error:', error)

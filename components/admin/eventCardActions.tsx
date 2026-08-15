@@ -5,7 +5,6 @@ import { toggleEventStatus } from '@/app/actions/event'
 import { useTransition } from 'react'
 
 type Props = {
-    slug?: string,
     id: string,
     isActive: boolean
 }
@@ -18,6 +17,7 @@ const [isPending, startTransition] = useTransition()
       const res = await toggleEventStatus(id, isActive)
       if (res.success) {
         toast.success(`Event ကို ${!isActive ? 'Active' : 'Closed'} ပြောင်းလဲလိုက်ပါပြီ`)
+        window.dispatchEvent(new CustomEvent('events-changed'))
       } else {
         toast.error(res.error)
       }

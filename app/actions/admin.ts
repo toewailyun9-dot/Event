@@ -3,9 +3,8 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/lib/auth'
-import { getRegistrationsSchema, deleteRegistrationSchema } from '@/lib/validation/admin'
+import { getRegistrationsSchema, deleteRegistrationSchema, getEventsSchema } from '@/lib/validation/admin'
 import { createRegistrationSchema } from '@/lib/validation/registerations'
-import { csvCell, csvField } from '@/lib/csv'
 
 // ၁။ Registrations အားလုံးကို ယူသည့် Action (with pagination + search + filters)
 export async function getRegistrations(params?: {
@@ -82,9 +81,52 @@ export async function getEventsForFilter() {
   }
 }
 
-type ExportCSVSuccess = { success: true; csv: string; filename: string }
-type ExportCSVError = { success: false; error: string }
-type ExportCSVResult = ExportCSVSuccess | ExportCSVError
+// Events list with pagination + search + status filter
+export async function getEvents(params?: {
+  search?: string
+  status?: 'ALL' | 'ACTIVE' | 'CLOSED'
+  page?: number
+  pageSize?: number
+}) {
+  try {
+    const auth = await requireAuth()
+    if (!auth.success) return { success: false, error: auth.error }
+
+    const parsed = getEventsSchema.parse(params ?? {})
+    const search = parsed.search?.trim() ?? ''
+    const skip = (parsed.page - 1) * parsed.pageSize
+
+    const where: Record<string, unknown> = {}
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' as const } },
+        { location: { contains: search, mode: 'insensitive' as const } },
+      ]
+    }
+
+    if (parsed.status === 'ACTIVE') where.isActive = true
+    if (parsed.status === 'CLOSED') where.isActive = false
+
+    const [data, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: parsed.pageSize,
+        skip,
+        include: {
+          _count: { select: { registrations: true } },
+        },
+      }),
+      prisma.event.count({ where }),
+    ])
+
+    return { success: true, data, total }
+  } catch (error) {
+    console.error('Failed to fetch events:', error)
+    return { success: false, error: 'Event များ ဆွဲထုတ်၍ မရပါ။' }
+  }
+}
 
 export type ImportRowInput = {
   row: number
@@ -201,44 +243,6 @@ export async function importRegistrations(
   } catch (error) {
     console.error('CSV Import Error:', error)
     return { success: false, error: 'CSV Import ပြုလုပ်ခြင်း မအောင်မြင်ပါ။' }
-  }
-}
-
-// ၁.၅။ Event တစ်ခုချင်းစီအတွက် CSV Export
-export async function exportEventCSV(eventId: string): Promise<ExportCSVResult> {
-  try {
-    const auth = await requireAuth()
-    if (!auth.success) return { success: false, error: auth.error }
-
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      include: {
-        registrations: { orderBy: { createdAt: 'desc' } },
-      },
-    })
-
-    if (!event) return { success: false, error: 'Event မတွေ့ပါ။' }
-
-    const BOM = '\uFEFF'
-    const headers = 'Name,Email,Age,Phone,Address,Registered Date\n'
-    const rows = event.registrations.map((r) =>
-      [
-        csvField(r.fullName),
-        csvField(r.email),
-        r.age,
-        csvCell(r.phone),
-        csvField(r.address),
-        csvField(new Date(r.createdAt).toLocaleDateString()),
-      ].join(',')
-    )
-
-    const csv = BOM + headers + rows.join('\n')
-    const filename = `${event.title.replace(/[^a-zA-Z0-9 ]/g, '_')}-${new Date().toISOString().slice(0, 10)}.csv`
-
-    return { success: true, csv, filename }
-  } catch (error) {
-    console.error('Failed to export CSV:', error)
-    return { success: false, error: 'CSV Export မအောင်မြင်ပါ။' }
   }
 }
 

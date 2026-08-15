@@ -40,7 +40,7 @@ export default function EventInviteIcons({
         <span
           title="Telegram Link မရှိသေးပါ"
           aria-label="Telegram Link မရှိသေးပါ"
-          className="w-7 h-7 flex items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-700 cursor-not-allowed"
+          className="w-7 h-7 flex items-center justify-center rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
         >
           <TelegramIcon className="w-4 h-4" />
         </span>
@@ -61,7 +61,7 @@ export default function EventInviteIcons({
         <span
           title="Viber Link မရှိသေးပါ"
           aria-label="Viber Link မရှိသေးပါ"
-          className="w-7 h-7 flex items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-700 cursor-not-allowed"
+          className="w-7 h-7 flex items-center justify-center rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
         >
           <ViberIcon className="w-4 h-4" />
         </span>

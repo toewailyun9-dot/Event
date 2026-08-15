@@ -14,6 +14,7 @@ import {
 import ExportCSVButton from "@/components/admin/exportCSVButton";
 import ImportCSVButton from "@/components/admin/importCSVButton";
 import EventRegistrationsTable from "@/components/admin/eventRegistrationsTable";
+import EventSponsorsManager from "@/components/admin/eventSponsorsManager";
 
 export default async function AdminEventDetailPage({
   params,
@@ -44,8 +45,20 @@ export default async function AdminEventDetailPage({
   const totalRegistrations = event._count.registrations;
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/events/${event.id}`;
 
+  // Sponsors များကို ဆွဲယူခြင်း
+  const eventSponsors = await prisma.eventSponsor.findMany({
+    where: { eventId: id },
+    include: { sponsor: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // Sponsors အသစ်ထည့်ရန် အသုံးပြုနိုင်သော company list
+  const allSponsors = await prisma.sponsor.findMany({
+    orderBy: { name: "asc" },
+  });
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen bg-background text-foreground p-4 sm:p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Navigation & Header Actions */}
@@ -53,18 +66,18 @@ export default async function AdminEventDetailPage({
           <div className="flex items-center gap-3">
             <Link
               href="/admin/events"
-              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+              className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${event.isActive ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
-                <span className="text-xs text-zinc-400 uppercase tracking-wider font-semibold">
+                <span className={`w-2 h-2 rounded-full ${event.isActive ? 'bg-emerald-500' : 'bg-muted'}`} />
+                <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                   {event.isActive ? 'Active Event' : 'Closed'}
                 </span>
               </div>
-              <h1 className="text-2xl font-bold text-white tracking-tight mt-0.5">
+              <h1 className="text-2xl font-bold text-foreground tracking-tight mt-0.5">
                 {event.title}
               </h1>
             </div>
@@ -75,7 +88,7 @@ export default async function AdminEventDetailPage({
               href={publicUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-card hover:bg-accent border border-border text-muted-foreground hover:text-foreground transition"
             >
               <ExternalLink className="w-4 h-4" />
               <span>Public Form ကြည့်မည်</span>
@@ -88,26 +101,26 @@ export default async function AdminEventDetailPage({
         {/* Metrics Overview Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Card 1: Total Registered */}
-          <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-zinc-400 mb-3">
+          <div className="p-5 rounded-2xl bg-card border border-border backdrop-blur-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-3">
               <span className="text-xs font-medium">စုစုပေါင်း Registrations</span>
               <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
                 <Users className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold text-white">{totalRegistrations}</div>
-            <p className="text-xs text-zinc-500 mt-1">လူဦးရေ စာရင်းသွင်းပြီးပါပြီ</p>
+            <div className="text-3xl font-extrabold text-foreground">{totalRegistrations}</div>
+            <p className="text-xs text-muted-foreground mt-1">လူဦးရေ စာရင်းသွင်းပြီးပါပြီ</p>
           </div>
 
           {/* Card 2: Date & Location */}
-          <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-zinc-400 mb-3">
+          <div className="p-5 rounded-2xl bg-card border border-border backdrop-blur-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-3">
               <span className="text-xs font-medium">ကျင်းပမည့် ရက်စွဲ / နေရာ</span>
               <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
                 <Calendar className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-sm font-semibold text-white">
+            <div className="text-sm font-semibold text-foreground">
               {new Date(event.eventDate).toLocaleDateString("en-US", {
                 weekday: "short",
                 year: "numeric",
@@ -115,7 +128,7 @@ export default async function AdminEventDetailPage({
                 day: "numeric",
               })}
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
               <MapPin className="w-3.5 h-3.5 text-rose-400" />
               <span>{event.location || "Online Event"}</span>
             </div>
@@ -123,6 +136,25 @@ export default async function AdminEventDetailPage({
 
       
         </div>
+
+        {/* Sponsors Management */}
+        <EventSponsorsManager
+          eventId={id}
+          eventSponsors={eventSponsors.map((es) => ({
+            id: es.sponsor.id,
+            name: es.sponsor.name,
+            website: es.sponsor.website,
+            description: es.sponsor.description,
+            contactEmail: es.sponsor.contactEmail,
+            contactName: es.sponsor.contactName,
+            contactPhone: es.sponsor.contactPhone,
+            amount: es.amount?.toString() ?? null,
+          }))}
+          allSponsors={allSponsors.map((s) => ({
+            id: s.id,
+            name: s.name,
+          }))}
+        />
 
         {/* Registrations Table (searchable + paginated, client-side) */}
         <EventRegistrationsTable eventId={id} />

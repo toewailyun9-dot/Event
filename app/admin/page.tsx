@@ -18,6 +18,7 @@ import {
   X,
 
   Mail,
+  HandCoins,
 } from 'lucide-react'
 
 import CreateEventButton from '@/components/admin/createEventButton'
@@ -65,9 +66,6 @@ export default function AdminDashboard() {
   }, [])
 
   const fetchData = useCallback(async (searchVal: string, pageNum: number, filters?: { eventId?: string; dateFrom?: string; dateTo?: string }) => {
-    // setState ကို effect အတွင်း synchronously မခေါ်မိစေရန်
-    // microtask ဖြင့် ရွှေ့ထားသည်။
-    await Promise.resolve()
     setLoading(true)
     try {
       const result = await getRegistrations({
@@ -100,6 +98,10 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
+    // Loading spinner အတွက် synchronous setState လိုအပ်သည် —
+    // react-hooks/set-state-in-effect rule ၏ data-fetching အတွက်
+    // လွန်ကဲသော စစ်ဆေးမှုကို ချန်လှပ်ထားသည်။
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData(debouncedSearch, page, {
       eventId: filterEventId,
       dateFrom: filterDateFrom,
@@ -162,17 +164,17 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen bg-background text-foreground p-4 sm:p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-800 pb-5">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-5">
           <div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
               <UserCheck className="w-6 h-6 text-indigo-400" />
               <span>Event Registrations Dashboard</span>
             </h1>
-            <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               စာရင်းသွင်းထားသူများ၏ စာရင်းကို စစ်ဆေးခြင်းနှင့် စီမံခန့်ခွဲခြင်းများ ပြုလုပ်နိုင်ပါသည်။
             </p>
           </div>
@@ -180,7 +182,7 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/admin/events"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-card border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-medium hover:bg-accent transition"
             >
               <Calendar className="w-4 h-4" />
               <span>Events</span>
@@ -188,17 +190,25 @@ export default function AdminDashboard() {
 
             <Link
               href="/admin/emails"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-card border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-medium hover:bg-accent transition"
             >
               <Mail className="w-4 h-4" />
               <span>Emails</span>
+            </Link>
+
+            <Link
+              href="/admin/sponsors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-card border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-medium hover:bg-accent transition"
+            >
+              <HandCoins className="w-4 h-4" />
+              <span>Sponsors</span>
             </Link>
 
             <CreateEventButton />
 
             <button
               onClick={exportToCSV}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-card border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-medium hover:bg-accent transition"
             >
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
@@ -209,7 +219,7 @@ export default function AdminDashboard() {
             <button
               onClick={() => fetchData(debouncedSearch, page)}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-medium hover:bg-zinc-800 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-card border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-medium hover:bg-accent transition disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -219,39 +229,39 @@ export default function AdminDashboard() {
 
         {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl backdrop-blur-sm">
-            <div className="flex items-center justify-between text-zinc-400 mb-2">
+          <div className="p-5 bg-card border border-border rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-2">
               <span className="text-xs font-medium">Total Registrations</span>
               <Users className="w-4 h-4 text-indigo-400" />
             </div>
-            <p className="text-3xl font-extrabold text-white">{total}</p>
-            <p className="text-xs text-zinc-500 mt-1">စုစုပေါင်း စာရင်းပေးသူ ဦးရေ</p>
+            <p className="text-3xl font-extrabold text-foreground">{total}</p>
+            <p className="text-xs text-muted-foreground mt-1">စုစုပေါင်း စာရင်းပေးသူ ဦးရေ</p>
           </div>
 
-          <div className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl backdrop-blur-sm">
-            <div className="flex items-center justify-between text-zinc-400 mb-2">
+          <div className="p-5 bg-card border border-border rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-2">
               <span className="text-xs font-medium">Average Age</span>
               <Calendar className="w-4 h-4 text-emerald-400" />
             </div>
-            <p className="text-3xl font-extrabold text-white">
+            <p className="text-3xl font-extrabold text-foreground">
               {registrations.length > 0
                 ? Math.round(
                     registrations.reduce((acc, curr) => acc + curr.age, 0) /
                       registrations.length
                   )
                 : 0}{' '}
-              <span className="text-sm font-normal text-zinc-400">နှစ်</span>
+              <span className="text-sm font-normal text-muted-foreground">နှစ်</span>
             </p>
-            <p className="text-xs text-zinc-500 mt-1">ပျှမ်းမျှ အသက်အရွယ်</p>
+            <p className="text-xs text-muted-foreground mt-1">ပျှမ်းမျှ အသက်အရွယ်</p>
           </div>
 
-          <div className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl backdrop-blur-sm">
-            <div className="flex items-center justify-between text-zinc-400 mb-2">
+          <div className="p-5 bg-card border border-border rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-2">
               <span className="text-xs font-medium">Filtered Results</span>
               <Filter className="w-4 h-4 text-amber-400" />
             </div>
-            <p className="text-3xl font-extrabold text-white">{total}</p>
-            <p className="text-xs text-zinc-500 mt-1">ရှာဖွေတွေ့ရှိသည့် အရေအတွက်</p>
+            <p className="text-3xl font-extrabold text-foreground">{total}</p>
+            <p className="text-xs text-muted-foreground mt-1">ရှာဖွေတွေ့ရှိသည့် အရေအတွက်</p>
           </div>
         </div>
 
@@ -262,7 +272,7 @@ export default function AdminDashboard() {
             className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition border ${
               hasActiveFilters
                 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-accent'
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -275,11 +285,11 @@ export default function AdminDashboard() {
           </button>
 
           {totalPages > 1 && (
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+                className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -289,7 +299,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+                className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -299,15 +309,15 @@ export default function AdminDashboard() {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 space-y-3">
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {/* Event Filter */}
               <div>
-                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">Event</label>
+                <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Event</label>
                 <select
                   value={filterEventId}
                   onChange={(e) => { setFilterEventId(e.target.value); setPage(1) }}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground outline-none focus:border-indigo-500 transition"
                 >
                   <option value="">All Events</option>
                   {events.map((ev) => (
@@ -320,23 +330,23 @@ export default function AdminDashboard() {
 
               {/* Date From */}
               <div>
-                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">From Date</label>
+                <label className="block text-xs text-muted-foreground mb-1.5 font-medium">From Date</label>
                 <input
                   type="date"
                   value={filterDateFrom}
                   onChange={(e) => { setFilterDateFrom(e.target.value); setPage(1) }}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition scheme-dark"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground outline-none focus:border-indigo-500 transition scheme-dark"
                 />
               </div>
 
               {/* Date To */}
               <div>
-                <label className="block text-xs text-zinc-500 mb-1.5 font-medium">To Date</label>
+                <label className="block text-xs text-muted-foreground mb-1.5 font-medium">To Date</label>
                 <input
                   type="date"
                   value={filterDateTo}
                   onChange={(e) => { setFilterDateTo(e.target.value); setPage(1) }}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 outline-none focus:border-indigo-500 transition scheme-dark"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground outline-none focus:border-indigo-500 transition scheme-dark"
                 />
               </div>
             </div>
@@ -344,7 +354,7 @@ export default function AdminDashboard() {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition px-2 py-1"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition px-2 py-1"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Clear All Filters</span>
@@ -354,24 +364,24 @@ export default function AdminDashboard() {
         )}
 
         {/* Search + Pagination Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-zinc-900/80 p-4 border border-zinc-800 rounded-2xl">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-card p-4 border border-border rounded-2xl">
           <div className="relative w-full sm:w-96">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="အမည်၊ Email သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာမည်..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder:text-zinc-500 outline-none focus:border-indigo-500 transition"
+              className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-indigo-500 transition"
             />
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">              <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-950/60 text-zinc-400 uppercase tracking-wider font-semibold">
+                <tr className="border-b border-border bg-muted text-muted-foreground uppercase tracking-wider font-semibold">
                   <th className="py-3.5 px-5">Name</th>
                   <th className="py-3.5 px-5">Email</th>
                   <th className="py-3.5 px-5">Age</th>
@@ -382,10 +392,10 @@ export default function AdminDashboard() {
                   <th className="py-3.5 px-5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/60 text-zinc-300">
+              <tbody className="divide-y divide-border text-muted-foreground">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-zinc-500">
+                    <td colSpan={8} className="py-12 text-center text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
                         <span>Data များကို ရယူနေပါသည်...</span>
@@ -394,7 +404,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : registrations.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-zinc-500">
+                    <td colSpan={8} className="py-12 text-center text-muted-foreground">
                       မည်သည့် စာရင်းမှ မရှိသေးပါ။
                     </td>
                   </tr>
@@ -402,19 +412,19 @@ export default function AdminDashboard() {
                   registrations.map((item) => (
                     <tr
                       key={item.id}
-                      className="hover:bg-zinc-800/30 transition-colors"
+                      className="hover:bg-accent transition-colors"
                     >
-                      <td className="py-4 px-5 font-medium text-white">
+                      <td className="py-4 px-5 font-medium text-foreground">
                         {item.fullName}
                       </td>
-                      <td className="py-4 px-5 text-zinc-400">{item.email}</td>
+                      <td className="py-4 px-5 text-muted-foreground">{item.email}</td>
                       <td className="py-4 px-5">
-                        <span className="px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300">
+                        <span className="px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground">
                           {item.age}
                         </span>
                       </td>
                       <td className="py-4 px-5">{item.phone}</td>
-                      <td className="py-4 px-5 text-zinc-400 max-w-xs truncate">
+                      <td className="py-4 px-5 text-muted-foreground max-w-xs truncate">
                         {item.address}
                       </td>
                       <td className="py-4 px-5">
@@ -422,7 +432,7 @@ export default function AdminDashboard() {
                           {item.event?.title ?? '—'}
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-zinc-500">
+                      <td className="py-4 px-5 text-muted-foreground">
                         {new Date(item.createdAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -452,16 +462,16 @@ export default function AdminDashboard() {
 
           {/* Pagination Footer */}
           {total > 0 && (
-            <div className="px-5 py-4 border-t border-zinc-800/60 flex items-center justify-between">
-              <span className="text-xs text-zinc-500">
+            <div className="px-5 py-4 border-t border-border flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
                 စုစုပေါင်း {total} ခု
               </span>
               {totalPages > 1 && (
-                <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+                    className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -471,7 +481,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="p-1.5 rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition"
+                    className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>

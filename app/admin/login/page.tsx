@@ -8,8 +8,8 @@ import { toast } from "sonner"
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     }>
       <LoginForm />
@@ -40,16 +40,16 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-white">Admin Login</h1>
-          <p className="text-sm text-zinc-400">အက်ဒမင် စာမျက်နှာသို့ ဝင်ရောက်ရန်</p>
+          <h1 className="text-2xl font-bold text-foreground">Admin Login</h1>
+          <p className="text-sm text-muted-foreground">အက်ဒမင် စာမျက်နှာသို့ ဝင်ရောက်ရန်</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 bg-card border border-border rounded-2xl p-6">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-300 mb-1.5">
+            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
               Password
             </label>
             <input
@@ -58,7 +58,7 @@ function LoginForm() {
               type="password"
               required
               autoFocus
-              className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder:text-zinc-500 outline-none focus:border-indigo-500 transition"
+              className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-indigo-500 transition"
             />
           </div>
 

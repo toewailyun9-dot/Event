@@ -1,36 +1,95 @@
+'use client'
+
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
+import { useCallback, useEffect, useState } from 'react'
 import EventCardActions from '@/components/admin/eventCardActions'
 import CreateEventButton from '@/components/admin/createEventButton'
 import EditEventButton from '@/components/admin/editEventButton'
 import DeleteEventButton from '@/components/admin/deleteEventButton'
 import EventInviteIcons from '@/components/admin/eventInviteIcons'
+import { getEvents } from '@/app/actions/admin'
+import { useDebounce } from '@/hooks/useDebounce'
+import { Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 
-export const revalidate = 0 // Data အမြဲတမ်း Fresh ဖြစ်နေစေရန်
+const PAGE_SIZE = 12
 
-export default async function AdminEventsPage() {
-  // Database မှ Event များအားလုံးကို Registrations အရေအတွက်နှင့်တကွ ဆွဲထုတ်ခြင်း
-  const events = await prisma.event.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: { registrations: true },
-      },
-    },
-  })
+type EventRow = {
+  id: string
+  title: string
+  location: string | null
+  eventDate: Date
+  isActive: boolean
+  telegramLink: string | null
+  viberLink: string | null
+  _count: { registrations: number }
+}
+
+export default function AdminEventsPage() {
+  const [events, setEvents] = useState<EventRow[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
+  const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'CLOSED'>('ALL')
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const result = await getEvents({
+        search: debouncedSearch || undefined,
+        status,
+        page,
+        pageSize: PAGE_SIZE,
+      })
+      if (result.success && result.data) {
+        setEvents(result.data)
+        setTotal(result.total ?? 0)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [debouncedSearch, status, page])
+
+  // Search / Status ပြောင်းသည့်အခါ page ကို 1 သို့ ပြန်လည်သတ်မှတ်ရန်
+  const [prevSearch, setPrevSearch] = useState(debouncedSearch)
+  if (prevSearch !== debouncedSearch) {
+    setPrevSearch(debouncedSearch)
+    setPage(1)
+  }
+
+  const [prevStatus, setPrevStatus] = useState(status)
+  if (prevStatus !== status) {
+    setPrevStatus(status)
+    setPage(1)
+  }
+
+  // Event create/edit/delete/toggle ပြီးသည့်အခါ စာရင်းကို refresh ပြန်လုပ်ရန်
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData()
+    const onEventsChanged = () => {
+      setPage(1)
+      fetchData()
+    }
+    window.addEventListener('events-changed', onEventsChanged)
+    return () => window.removeEventListener('events-changed', onEventsChanged)
+  }, [fetchData])
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
-    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-800 p-4 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
-        
+
         {/* Header Section */}
-        <div className="p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 space-y-4">
-          
+        <div className="p-6 bg-card rounded-xl shadow-lg border border-border space-y-4">
+
           {/* Back Button */}
           <div>
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <svg
                 className="w-4 h-4"
@@ -51,10 +110,10 @@ export default async function AdminEventsPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              <h1 className="text-2xl font-bold text-foreground">
                 Events Management
               </h1>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 ဖန်တီးထားသော Event များနှင့် Registration စာရင်းများကို စီမံခန့်ခွဲပါ။
               </p>
             </div>
@@ -62,11 +121,52 @@ export default async function AdminEventsPage() {
           </div>
         </div>
 
+        {/* Search + Filter Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 bg-card p-4 border border-border rounded-xl">
+          <div className="relative w-full sm:w-96">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Event Title သို့မဟုတ် နေရာဖြင့် ရှာမည်..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-indigo-500 transition"
+            />
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as 'ALL' | 'ACTIVE' | 'CLOSED')}
+              className="px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground outline-none focus:border-indigo-500 transition"
+            >
+              <option value="ALL">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+            <button
+              onClick={() => fetchData()}
+              disabled={loading}
+              className="p-2 rounded-lg bg-background border border-border text-muted-foreground hover:text-foreground transition disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
         {/* Event List Grid */}
-        {events.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-              မရှိသေးပါ။ Event အသစ် စတင်ဖန်တီးပါ။
+        {loading ? (
+          <div className="text-center py-12 bg-card rounded-xl border border-border">
+            <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
+              <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
+              <span>Data များကို ရယူနေပါသည်...</span>
+            </div>
+          </div>
+        ) : events.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-xl border border-border">
+            <p className="text-muted-foreground text-sm">
+              {search || status !== 'ALL'
+                ? 'ရှာဖွေတွေ့ရှိသည့် Event မရှိပါ။'
+                : 'မရှိသေးပါ။ Event အသစ် စတင်ဖန်တီးပါ။'}
             </p>
           </div>
         ) : (
@@ -74,25 +174,25 @@ export default async function AdminEventsPage() {
             {events.map((event) => (
               <div
                 key={event.id}
-                className="p-5 bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between space-y-4"
+                className="p-5 bg-card rounded-xl shadow-md border border-border flex flex-col justify-between space-y-4"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">
+                    <h3 className="text-lg font-bold text-foreground line-clamp-1">
                       {event.title}
                     </h3>
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                         event.isActive
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
+                          : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {event.isActive ? 'Active' : 'Closed'}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  <div className="space-y-1.5 text-xs text-muted-foreground">
                     <p className="flex items-center gap-1.5">
                       <span>📅</span>
                       {new Date(event.eventDate).toLocaleString('en-US', {
@@ -108,7 +208,7 @@ export default async function AdminEventsPage() {
                     )}
                     <p className="flex items-center gap-1.5">
                       <span>🔗</span>
-                      <code className="text-zinc-700 dark:text-zinc-300 font-mono">
+                      <code className="text-foreground font-mono">
                         /events/{event.id}
                       </code>
                     </p>
@@ -123,10 +223,10 @@ export default async function AdminEventsPage() {
                 </div>
 
                 {/* Event Card Bottom Actions */}
-                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                <div className="pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-foreground">
                     {event._count.registrations}{' '}
-                    <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                    <span className="text-xs font-normal text-muted-foreground">
                       Registrations
                     </span>
                   </div>
@@ -134,10 +234,10 @@ export default async function AdminEventsPage() {
                   <div className="flex items-center flex-wrap gap-2">
                     {/* Toggle Button ပါဝင်သော Actions Component */}
                     <EventCardActions id={event.id} isActive={event.isActive} />
-                    
+
                     <Link
                       href={`/admin/events/${event.id}`}
-                      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-medium rounded-lg transition"
+                      className="px-3 py-1.5 bg-muted hover:bg-accent text-foreground text-xs font-medium rounded-lg transition"
                     >
                       View List
                     </Link>
@@ -146,7 +246,6 @@ export default async function AdminEventsPage() {
                       event={{
                         id: event.id,
                         title: event.title,
-                        slug: event.slug,
                         eventDate: event.eventDate.toISOString(),
                         location: event.location,
                         telegramLink: event.telegramLink,
@@ -162,6 +261,36 @@ export default async function AdminEventsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="px-5 py-4 bg-card border border-border rounded-xl flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              စုစုပေါင်း {total} ခု
+            </span>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="px-2">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
 
